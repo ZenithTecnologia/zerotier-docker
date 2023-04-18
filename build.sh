@@ -7,9 +7,14 @@ zt_is_latest=0
 # Podman Required - Docker does not support volume on build
 
 BUILDAH_FORMAT=docker podman buildx build -v /etc/pki/entitlement:/etc/pki/entitlement:ro -t quay.io/zenithtecnologia/zerotier-docker:${zt_version} --build-arg VERSION=${zt_version} .
+BUILDAH_FORMAT=docker podman buildx build -v /etc/pki/entitlement:/etc/pki/entitlement:ro -t quay.io/zenithtecnologia/zerotier-docker:${zt_version}-debian --build-arg VERSION=${zt_version} -f Dockerfile.debian .
+
 podman push quay.io/zenithtecnologia/zerotier-docker:${zt_version}
+podman push quay.io/zenithtecnologia/zerotier-docker:${zt_version}-debian
 
 if [[ ${zt_version} == ${zt_version_latest} ]]; then
 	podman tag quay.io/zenithtecnologia/zerotier-docker:${zt_version} quay.io/zenithtecnologia/zerotier-docker:latest
+	podman tag quay.io/zenithtecnologia/zerotier-docker:${zt_version}-debian quay.io/zenithtecnologia/zerotier-docker:latest-debian
 	podman push quay.io/zenithtecnologia/zerotier-docker:latest
+	podman push quay.io/zenithtecnologia/zerotier-docker:latest-debian
 fi

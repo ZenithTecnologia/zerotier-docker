@@ -11,7 +11,9 @@ Some system like [VyOS](https://docs.vyos.io/en/equuleus/configuration/container
 
 ## How to use
 
-This container is compatible with [Zerotier official image](https://github.com/zerotier/ZeroTierOne/blob/dev/README.docker.md) way to use. To pull the image you can use `podman pull quay.io/zenithtecnologia/zerotier-docker` or `docker pull quay.io/zenithtecnologia/zerotier-docker`
+This container is compatible with [Zerotier official image](https://github.com/zerotier/ZeroTierOne/blob/dev/README.docker.md) way to use. To pull the image you can use `podman pull quay.io/zenithtecnologia/zerotier-docker:latest` or `docker pull quay.io/zenithtecnologia/zerotier-docker:latest`
+
+A Debian image is also available with some optimizations at `quay.io/zenithtecnologia/zerotier-docker:latest-debian`
 
 ## Notes about building
 

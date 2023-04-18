@@ -8,14 +8,14 @@ RUN apt -y update \
 
 FROM docker.io/library/debian:bullseye-slim
 
-ARG VERSION
+ARG zt_version=1.0.6
 
-COPY entrypoint.sh.release /entrypoint.sh
 COPY --from=gpg /tmp/zerotier.gpg /etc/apt/keyrings/zerotier.gpg
+ADD https://raw.githubusercontent.com/zerotier/ZeroTierOne/${zt_version}/entrypoint.sh.release /entrypoint.sh
 
 RUN echo "deb [signed-by=/etc/apt/keyrings/zerotier.gpg] http://download.zerotier.com/debian/bullseye bullseye main" > /etc/apt/sources.list.d/zerotier.list \
     && apt -y update \
-    && apt -y install -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 zerotier-one=${VERSION} iproute2 net-tools iputils-ping \
+    && apt -y install -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 zerotier-one=${1.0.6} iproute2 net-tools iputils-ping \
     && apt -y purge ca-certificates gpg gpgconf \
     && chmod 755 /entrypoint.sh \
     && rm -rf /etc/apt/trusted.gpg.d/zerotier.gpg /var/lib/zerotier-one /var/lib/apt/lists/* /var/cache/apt/* /var/log/apt/* 
