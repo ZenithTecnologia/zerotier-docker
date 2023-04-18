@@ -17,8 +17,10 @@ RUN mkdir /zt-rpm \
 
 FROM registry.redhat.io/ubi9-minimal:latest
 
+ARG zt_version=1.10.6
+
 COPY --from=build /zt-rpm/* /zt-rpm/
-COPY entrypoint.sh.release /entrypoint.sh
+ADD https://raw.githubusercontent.com/zerotier/ZeroTierOne/${zt_version}/entrypoint.sh.release /entrypoint.sh
 
 RUN rpm --nodeps --noscripts -Uvh /zt-rpm/*.rpm \
     && microdnf -y install $(rpm -qpR /zt-rpm/*.rpm | grep -v [\(\)\/] | grep -v systemd ) \
