@@ -14,7 +14,7 @@ RUN mkdir /zt-root \
     && make redhat 
 
 RUN find /root/rpmbuild/RPMS -type f -name "*$(rpm --eval '%{_arch}')*.rpm" -print0 | xargs -0 -I {} rpm --nodeps --noscripts -Uvh {} \
-    && PKG_DEPS=$(find /root/rpmbuild/RPMS -type f -name "*$(rpm --eval '%{_arch}')*.rpm" -print0 | xargs -0 -I {} rpm -qpR {} | grep -v systemd ) \
+    && PKG_DEPS=$(find /root/rpmbuild/RPMS -type f -name "*$(rpm --eval '%{_arch}')*.rpm" -print0 | xargs -0 -I {} rpm -qpR {} | grep -v [\(\)\/] | grep -v systemd ) \
     && dnf install --installroot /zt-root ${PKG_DEPS} --releasever 9 --setopt install_weak_deps=false --nodocs -y \
     && dnf --installroot /zt-root clean all \
     && rm -rf /var/cache/yum /var/lib/dnf /zt-root/var/cache/yum /zt-root/var/lib/zerotier-one /zt-root/var/lib/dnf /zt-root/var/lib/rpm*
