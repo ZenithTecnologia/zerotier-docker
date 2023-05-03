@@ -11,10 +11,13 @@ RUN mkdir /zt-root \
     && git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
     && cd ZeroTierOne \
     && git log --pretty=oneline -n1 \
-    && make redhat \
-    && find /root/rpmbuild/RPMS -type f -name "*$(rpm --eval '%{_arch}')*.rpm" -print0 | xargs -0 -I {} dnf install --installroot /zt-root {} --releasever 9 --setopt install_weak_deps=false --nodocs -y \
+    && make redhat 
+
+RUN find /root/rpmbuild/RPMS -type f -name "*$(rpm --eval '%{_arch}')*.rpm" -print0 | xargs -0 -I {} rpm --nodeps --noscripts -Uvh {} \
+    && PKG_DEPS=$(find /root/rpmbuild/RPMS -type f -name "*$(rpm --eval '%{_arch}')*.rpm" -print0 | xargs -0 -I {} rpm -qpR {} | grep -v systemd ) \
+    && dnf install --installroot /zt-root ${PKG_DEPS} --releasever 9 --setopt install_weak_deps=false --nodocs -y \
     && dnf --installroot /zt-root clean all \
-    && rm -rf /var/cache/yum /var/lib/dnf /zt-root/var/cache/yum /zt-root/var/lib/dnf /zt-root/var/lib/rpm*
+    && rm -rf /var/cache/yum /var/lib/dnf /zt-root/var/cache/yum /zt-root/var/lib/zerotier-one /zt-root/var/lib/dnf /zt-root/var/lib/rpm*
 
 FROM registry.redhat.io/ubi9-minimal:latest
 
