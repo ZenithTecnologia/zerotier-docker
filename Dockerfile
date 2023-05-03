@@ -2,7 +2,7 @@
 
 FROM registry.redhat.io/ubi9:latest as build
 
-ARG zt_version=1.10.6
+ARG zt_version
 
 WORKDIR /tmp
 RUN mkdir /zt-root \
@@ -17,6 +17,8 @@ RUN mkdir /zt-root \
     && rm -rf /var/cache/yum /var/lib/dnf /zt-root/var/cache/yum /zt-root/var/lib/dnf /zt-root/var/lib/rpm*
 
 FROM registry.redhat.io/ubi9-minimal:latest
+
+ARG zt_version
 
 ADD https://raw.githubusercontent.com/zerotier/ZeroTierOne/${zt_version}/entrypoint.sh.release /entrypoint.sh
 COPY --from=build /zt-root /
