@@ -7,10 +7,10 @@ FROM registry.redhat.io/ubi9:latest as build
 ARG zt_version
 
 WORKDIR /tmp
-RUN mkdir /zt-root \
-    && dnf -y install make gcc gcc-c++ git clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-static
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal
+RUN dnf -y install make gcc gcc-c++ git clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-static
+
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal #rhel
 
 RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
     && cd ZeroTierOne \
@@ -18,6 +18,7 @@ RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroT
 
 RUN cd ZeroTierOne \
     && make LDFLAGS="-static-libgcc -static-libstdc++" -j $(nproc --ignore=1) one \
+    && mkdir /zt-root \
     && DESTDIR=/zt-root make install \
     && rm -rfv /zt-root/var/lib/zerotier-one
 

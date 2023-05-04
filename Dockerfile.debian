@@ -1,29 +1,44 @@
 # vim: ft=dockerfile
-FROM docker.io/library/debian:bullseye-slim as gpg
+
+FROM docker.io/library/debian:bullseye-slim as build
+
+ARG zt_version
+
+WORKDIR /tmp
+RUN mkdir /zt-root
 
 RUN apt -y update \
-    && apt -y -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 install ca-certificates gpg gpg-agent curl \
-    && curl -sSL https://download.zerotier.com/contact%40zerotier.com.gpg -o /zerotier.asc \
-    && gpg --no-default-keyring --keyring /tmp/zerotier.gpg --import /zerotier.asc
+    && apt -y -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 install build-essential pkg-config git clang curl libssl-dev linux-libc-dev ca-certificates
+
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal #debian
+
+RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
+    && cd ZeroTierOne \
+    && git log --pretty=oneline -n1 
+
+RUN cd ZeroTierOne \
+    && make LDFLAGS="-lssl -lcrypto" -j $(nproc --ignore=1) one \
+    && DESTDIR=/zt-root make install \
+    && rm -rfv /zt-root/var/lib/zerotier-one
 
 FROM docker.io/library/debian:bullseye-slim
 
-ARG zt_version=1.10.6
+ARG zt_version
 
-COPY --from=gpg /tmp/zerotier.gpg /etc/apt/keyrings/zerotier.gpg
+LABEL io.k8s.description "This container runs Zerotier - a smart programmable Ethernet switch for planet Earth."
+LABEL io.k8s.display-name "zerotier"
+LABEL maintainer "Zenith Tecnologia <dev@zenithtecnologia.com.br>"
+LABEL name "zerotier"
+LABEL summary "ZeroTier - a smart programmable Ethernet switch for planet Earth."
+LABEL url "https://github.com/ZenithTecnologia/zerotier-docker"
+LABEL org.zerotier.version ${zt_version}
 
-RUN echo "deb [signed-by=/etc/apt/keyrings/zerotier.gpg] http://download.zerotier.com/debian/bullseye bullseye main" > /etc/apt/sources.list.d/zerotier.list \
-    && apt -y update \
-    && apt -y install -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 zerotier-one=${zt_version} iproute2 net-tools iputils-ping \
-    && apt -y purge ca-certificates gpg gpgconf \
-    && rm -rf /etc/apt/trusted.gpg.d/zerotier.gpg /var/lib/zerotier-one /var/lib/apt/lists/* /var/cache/apt/* /var/log/apt/* 
-
-HEALTHCHECK --interval=1s CMD bash /healthcheck.sh
+COPY --from=build /zt-root /
 
 ENV TINI_VERSION v0.19.0
 ADD --chmod=0755 https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/${zt_version}/entrypoint.sh.release /entrypoint.sh
 
-ENTRYPOINT ["/tini", "--"]
+HEALTHCHECK --interval=1s CMD bash /healthcheck.sh
 
-CMD ["/entrypoint.sh"]
+ENTRYPOINT ["/tini", "--", "/entrypoint.sh"]
