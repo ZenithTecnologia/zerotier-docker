@@ -38,7 +38,9 @@ COPY --from=build /zt-root /
 
 ENV TINI_VERSION v0.19.0
 ADD --chmod=0755 https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/${zt_version}/entrypoint.sh.release /entrypoint.sh
+#ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/${zt_version}/entrypoint.sh.release /entrypoint.sh
+# 1.10.6: From dev until joining get fixed 
+ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release /entrypoint.sh
 
 HEALTHCHECK --interval=1s CMD bash /healthcheck.sh
 
