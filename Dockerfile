@@ -4,13 +4,13 @@ FROM registry.redhat.io/ubi9:latest as build
 
 # Since this image will be discarded in the end, nobody cares about tons of RUN statement
 
-ARG zt_version
-
 WORKDIR /tmp
 
 RUN dnf -y install make gcc gcc-c++ git clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-static
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal #rhel
+
+ARG zt_version
 
 RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
     && cd ZeroTierOne \
@@ -22,9 +22,22 @@ RUN cd ZeroTierOne \
     && DESTDIR=/zt-root make install \
     && rm -rfv /zt-root/var/lib/zerotier-one
 
-FROM registry.redhat.io/ubi9/openssl:latest
+ARG curl_version=8.0.1
 
-ARG zt_version
+RUN mkdir curl \
+    && cd curl \
+    && curl -O https://curl.se/download/curl-${curl_version}.tar.gz \
+    && tar -xvzf curl-${curl_version}.tar.gz \
+    && cd curl-${curl_version} \
+    && LDFLAGS="-static" PKG_CONFIG="pkg-config --static" ./configure --disable-shared --enable-static --disable-ldap --enable-ipv6 --without-ssl \
+    && make -j$(nproc --ignore=1) V=1 LDFLAGS="-static -all-static" \ 
+    && strip src/curl \
+    && ./src/curl -V \
+    && mv -v ./src/curl /curl
+
+# --- end of build --- #
+
+FROM registry.redhat.io/ubi9/openssl:latest
 
 LABEL io.k8s.description "This container runs Zerotier - a smart programmable Ethernet switch for planet Earth."
 LABEL io.k8s.display-name "zerotier"
@@ -35,9 +48,12 @@ LABEL url "https://github.com/ZenithTecnologia/zerotier-docker"
 LABEL org.zerotier.version ${zt_version}
 
 COPY --from=build /zt-root /
+COPY --from=build --chmod=0755 /curl /usr/bin/curl
 
 ENV TINI_VERSION v0.19.0
 ADD --chmod=0755 https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+
+ARG zt_version
 #ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/${zt_version}/entrypoint.sh.release /entrypoint.sh
 # 1.10.6: From dev until joining get fixed 
 ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release /entrypoint.sh

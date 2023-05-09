@@ -2,8 +2,6 @@
 
 FROM docker.io/library/debian:bullseye-slim as build
 
-ARG zt_version
-
 WORKDIR /tmp
 RUN mkdir /zt-root
 
@@ -11,6 +9,8 @@ RUN apt -y update \
     && apt -y -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 install build-essential pkg-config git clang curl libssl-dev linux-libc-dev ca-certificates
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal #debian
+
+ARG zt_version
 
 RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
     && cd ZeroTierOne \
@@ -21,9 +21,20 @@ RUN cd ZeroTierOne \
     && DESTDIR=/zt-root make install \
     && rm -rfv /zt-root/var/lib/zerotier-one
 
-FROM docker.io/library/debian:bullseye-slim
+ARG curl_version=8.0.1
 
-ARG zt_version
+RUN mkdir curl \
+    && cd curl \
+    && curl -O https://curl.se/download/curl-${curl_version}.tar.gz \
+    && tar -xvzf curl-${curl_version}.tar.gz \
+    && cd curl-${curl_version} \
+    && LDFLAGS="-static" PKG_CONFIG="pkg-config --static" ./configure --disable-shared --enable-static --disable-ldap --enable-ipv6 --without-ssl \
+    && make -j$(nproc --ignore=1) V=1 LDFLAGS="-static -all-static" \ 
+    && strip src/curl \
+    && ./src/curl -V \
+    && mv -v ./src/curl /curl
+
+FROM docker.io/library/debian:bullseye-slim
 
 LABEL io.k8s.description "This container runs Zerotier - a smart programmable Ethernet switch for planet Earth."
 LABEL io.k8s.display-name "zerotier"
@@ -34,9 +45,12 @@ LABEL url "https://github.com/ZenithTecnologia/zerotier-docker"
 LABEL org.zerotier.version ${zt_version}
 
 COPY --from=build /zt-root /
+COPY --from=build --chmod=0755 /curl /usr/bin/curl
 
 ENV TINI_VERSION v0.19.0
 ADD --chmod=0755 https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+
+ARG zt_version
 # 1.10.6: From dev until joining get fixed 
 ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release /entrypoint.sh
 
