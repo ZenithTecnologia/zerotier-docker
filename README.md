@@ -15,6 +15,8 @@ This container is compatible with [Zerotier official image](https://github.com/z
 
 A Debian image is also available with some optimizations at `quay.io/zenithtecnologia/zerotier-docker:latest-debian`
 
+Images with sha-tag have a expiration time set to 90 days to keep house clean.
+
 ## Notes about building
 
 Build requires podman because entitlement keys must be mounted on container. Also, requires to be build on licenced RHEL.
