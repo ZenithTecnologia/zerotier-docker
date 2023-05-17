@@ -20,6 +20,12 @@ jobs:
           echo "zt_version=$(git describe --abbrev=0)" >> "$GITHUB_ENV"
           echo "zt_dev_sha=$(git ls-remote https://github.com/zerotier/ZeroTierOne.git --head refs/heads/dev | awk '{print $1}')" >> "$GITHUB_ENV"
 
+      - name: Tar as root
+        run: |
+          sudo mv -fv /usr/bin/tar /usr/bin/tar.orig
+          echo -e '#!/bin/sh\n\nsudo /usr/bin/tar.orig "$@"' | sudo tee -a /usr/bin/tar
+          sudo chmod +x /usr/bin/tar
+
       - name: Enable caching for podman
         id: cache-podman-restore
         uses: actions/cache/restore@v3
@@ -133,11 +139,11 @@ jobs:
 
       - name: Run Trivy vulnerability scanner - Origin branch dev
         run: |
-          podman run -v /tmp/podman.sock:/var/run/docker.sock docker.io/aquasec/trivy:latest -b 'sarif' -h 'zerotier-docker-ubi.sarif' -d '1' -g 'CRITICAL,HIGH' -f 'os,library' -e 'true' image ${{ steps.build-dev.outputs.image }}
+          podman run --privileged -v /run/user/1000/podman/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-ubi.sarif --exit-code 1 --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev.outputs.image }}
 
       - name: Run Trivy vulnerability scanner - Debian origin branch dev
         run: |
-          podman run -v /tmp/podman.sock:/var/run/docker.sock docker.io/aquasec/trivy:latest -b 'sarif' -h 'zerotier-docker-debian.sarif' -d '1' -g 'CRITICAL,HIGH' -f 'os,library' -e 'true' image ${{ steps.build-dev-debian.outputs.image }}
+          podman run --privileged -v /run/user/1000/podman/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-debian.sarif --exit-code 1 --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev-debian.outputs.image }}
 
       - name: Upload Trivy scan results to GitHub Security tab - UBI
         uses: github/codeql-action/upload-sarif@v2
