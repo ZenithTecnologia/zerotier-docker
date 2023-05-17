@@ -1,0 +1,74 @@
+name: Build Zerotier Dev
+on:
+  push:
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 * * *'
+
+jobs:
+  build:
+    name: Build and push to registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Clone the repository
+        uses: actions/checkout@v3
+
+      - name: Environment Vars setup
+        run: |
+          echo "zt_version_latest=$(git describe --tags `git rev-list --tags --max-count=1`)" >> "$GITHUB_ENV"
+          echo "zt_version=$(git describe --abbrev=0)" >> "$GITHUB_ENV"
+          echo "zt_dev_sha=$(git ls-remote https://github.com/zerotier/ZeroTierOne.git --head refs/heads/dev | awk '{print $1}')" >> "$GITHUB_ENV"
+
+      - name: Log in to Quay
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: "quay.io"
+          username: ${{ secrets.ZENITH_QUAY_USER }}
+          password: ${{ secrets.ZENITH_QUAY_TOKEN }}
+
+      - name: Log in to registry.redhat.io
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: "registry.redhat.io"
+          username: ${{ secrets.ZENITH_REDHAT_USER }}
+          password: ${{ secrets.ZENITH_REDHAT_TOKEN }}
+
+      - name: Build container for UBI - Origin branch dev
+        id: build-dev
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: zerotier-docker
+          tags: dev
+          containerfiles: |
+            ./Dockerfile
+          build-args: |
+            zt_version=dev
+
+      - name: Build container for UBI - Origin branch dev - sha commit
+        id: build-sha
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: zerotier-docker
+          tags: ${{ env.zt_dev_sha }}
+          containerfiles: |
+            ./Dockerfile
+          build-args: |
+            zt_version=dev
+            quay_expiration=12w
+
+      - name: Push to Quay - Origin branch dev
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-dev.outputs.image }}
+          tags: ${{ steps.build-dev.outputs.tags }}
+          registry: quay.io/zenithtecnologia
+
+
+      - name: Push to Quay - Origin branch dev - sha commit
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-sha.outputs.image }}
+          tags: ${{ steps.build-sha.outputs.tags }}
+          registry: quay.io/zenithtecnologia
+

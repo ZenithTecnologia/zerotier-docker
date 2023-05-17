@@ -1,6 +1,10 @@
 # zerotier-docker
 Enterprise-ready Zerotier docker container
 
+## Status
+
+[![Build Zerotier Dev](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-dev.yml/badge.svg)](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-dev.yml)
+
 ## Motivation
 
 This version uses only RHEL Universal Base Image as platform, [tini init system](https://github.com/krallin/tini) and official [rustup](https://www.rust-lang.org/tools/install) to build and run image, assuring complete compatibility with RedHat environment. It also bring some optimization in container size and forced PID1-handler provided by tini.
