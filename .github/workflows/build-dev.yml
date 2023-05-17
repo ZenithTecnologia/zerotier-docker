@@ -20,6 +20,14 @@ jobs:
           echo "zt_version=$(git describe --abbrev=0)" >> "$GITHUB_ENV"
           echo "zt_dev_sha=$(git ls-remote https://github.com/zerotier/ZeroTierOne.git --head refs/heads/dev | awk '{print $1}')" >> "$GITHUB_ENV"
 
+      - name: Enable caching for podman
+        id: cache-podman-restore
+        uses: actions/cache/restore@v3
+        with:
+          path: |
+            ~/.local/share/containers
+          key: ${{ runner.os }}-zerotier-docker
+
       - name: Log in to Quay
         uses: redhat-actions/podman-login@v1
         with:
@@ -33,6 +41,10 @@ jobs:
           registry: "registry.redhat.io"
           username: ${{ secrets.ZENITH_REDHAT_USER }}
           password: ${{ secrets.ZENITH_REDHAT_TOKEN }}
+      
+      - name: Podman Socket
+        run: |
+          podman system service  --time=0 unix:///tmp/podman.sock &
 
       - name: Build container for UBI - Origin branch dev
         id: build-dev
@@ -40,6 +52,7 @@ jobs:
         with:
           image: zerotier-docker
           tags: dev
+          layers: true
           containerfiles: |
             ./Dockerfile
           build-args: |
@@ -51,6 +64,7 @@ jobs:
         with:
           image: zerotier-docker
           tags: ${{ env.zt_dev_sha }}
+          layers: true
           containerfiles: |
             ./Dockerfile
           build-args: |
@@ -63,6 +77,7 @@ jobs:
         with:
           image: zerotier-docker
           tags: dev-debian
+          layers: true
           containerfiles: |
             ./Dockerfile.debian
           build-args: |
@@ -74,6 +89,7 @@ jobs:
         with:
           image: zerotier-docker
           tags: ${{ env.zt_dev_sha }}-debian
+          layers: true
           containerfiles: |
             ./Dockerfile.debian
           build-args: |
@@ -86,7 +102,6 @@ jobs:
           image: ${{ steps.build-dev.outputs.image }}
           tags: ${{ steps.build-dev.outputs.tags }}
           registry: quay.io/zenithtecnologia
-
 
       - name: Push to Quay - Origin branch dev - sha commit
         uses: redhat-actions/push-to-registry@v2
@@ -102,7 +117,6 @@ jobs:
           tags: ${{ steps.build-dev-debian.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
-
       - name: Push to Quay Debian - Origin branch dev - sha commit
         uses: redhat-actions/push-to-registry@v2
         with:
@@ -110,3 +124,34 @@ jobs:
           tags: ${{ steps.build-sha-debian.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
+      - name: Update caching for podman
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            ~/.local/share/containers
+          key: ${{ steps.cache-podman-restore.outputs.cache-primary-key }}
+
+      - name: Run Trivy vulnerability scanner - Origin branch dev
+        run: |
+          podman run -v /tmp/podman.sock:/var/run/docker.sock docker.io/aquasec/trivy:latest -b 'sarif' -h 'zerotier-docker-ubi.sarif' -d '1' -g 'CRITICAL,HIGH' -f 'os,library' -e 'true' image ${{ steps.build-dev.outputs.image }}
+
+      - name: Run Trivy vulnerability scanner - Debian origin branch dev
+        run: |
+          podman run -v /tmp/podman.sock:/var/run/docker.sock docker.io/aquasec/trivy:latest -b 'sarif' -h 'zerotier-docker-debian.sarif' -d '1' -g 'CRITICAL,HIGH' -f 'os,library' -e 'true' image ${{ steps.build-dev-debian.outputs.image }}
+
+      - name: Upload Trivy scan results to GitHub Security tab - UBI
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'zerotier-docker-ubi.sarif'
+
+      - name: Upload Trivy scan results to GitHub Security tab - UBI
+        uses: github/codeql-action/upload-sarif@v2
+        with:
+          sarif_file: 'zerotier-docker-debian.sarif'
+
+      - name: Update caching for podman
+        uses: actions/cache/save@v3
+        with:
+          path: |
+            ~/.local/share/containers
+          key: ${{ steps.cache-podman-restore.outputs.cache-primary-key }}
