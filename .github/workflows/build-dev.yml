@@ -55,7 +55,30 @@ jobs:
             ./Dockerfile
           build-args: |
             zt_version=dev
-            quay_expiration=12w
+            quay_expiration=1w
+
+      - name: Build container for Debian - Origin branch dev
+        id: build-dev-debian
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: zerotier-docker
+          tags: dev-debian
+          containerfiles: |
+            ./Dockerfile.debian
+          build-args: |
+            zt_version=dev
+
+      - name: Build container for Debian - Origin branch dev - sha commit
+        id: build-sha-debian
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: zerotier-docker
+          tags: ${{ env.zt_dev_sha }}-debian
+          containerfiles: |
+            ./Dockerfile.debian
+          build-args: |
+            zt_version=dev
+            quay_expiration=1w
 
       - name: Push to Quay - Origin branch dev
         uses: redhat-actions/push-to-registry@v2
@@ -70,5 +93,20 @@ jobs:
         with:
           image: ${{ steps.build-sha.outputs.image }}
           tags: ${{ steps.build-sha.outputs.tags }}
+          registry: quay.io/zenithtecnologia
+
+      - name: Push to Quay Debian - Origin branch dev
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-dev-debian.outputs.image }}
+          tags: ${{ steps.build-dev-debian.outputs.tags }}
+          registry: quay.io/zenithtecnologia
+
+
+      - name: Push to Quay Debian - Origin branch dev - sha commit
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-sha-debian.outputs.image }}
+          tags: ${{ steps.build-sha-debian.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
