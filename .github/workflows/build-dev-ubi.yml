@@ -77,31 +77,6 @@ jobs:
             zt_version=dev
             quay_expiration=1w
 
-      - name: Build container for Debian - Origin branch dev
-        id: build-dev-debian
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: zerotier-docker
-          tags: dev-debian
-          layers: true
-          containerfiles: |
-            ./Dockerfile.debian
-          build-args: |
-            zt_version=dev
-
-      - name: Build container for Debian - Origin branch dev - sha commit
-        id: build-sha-debian
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: zerotier-docker
-          tags: ${{ env.zt_dev_sha }}-debian
-          layers: true
-          containerfiles: |
-            ./Dockerfile.debian
-          build-args: |
-            zt_version=dev
-            quay_expiration=1w
-
       - name: Push to Quay - Origin branch dev
         uses: redhat-actions/push-to-registry@v2
         with:
@@ -116,20 +91,6 @@ jobs:
           tags: ${{ steps.build-sha.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
-      - name: Push to Quay Debian - Origin branch dev
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build-dev-debian.outputs.image }}
-          tags: ${{ steps.build-dev-debian.outputs.tags }}
-          registry: quay.io/zenithtecnologia
-
-      - name: Push to Quay Debian - Origin branch dev - sha commit
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build-sha-debian.outputs.image }}
-          tags: ${{ steps.build-sha-debian.outputs.tags }}
-          registry: quay.io/zenithtecnologia
-
       - name: Update caching for podman
         uses: actions/cache/save@v3
         with:
@@ -141,19 +102,10 @@ jobs:
         run: |
           podman run --privileged -v /tmp/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-ubi.sarif --exit-code 1 --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev.outputs.image }}
 
-#      - name: Run Trivy vulnerability scanner - Debian origin branch dev
-#        run: |
-#          podman run --privileged -v /tmp/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-debian.sarif --exit-code 1 --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev-debian.outputs.image }}
-
       - name: Upload Trivy scan results to GitHub Security tab - UBI
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'zerotier-docker-ubi.sarif'
-
-#      - name: Upload Trivy scan results to GitHub Security tab - UBI
-#        uses: github/codeql-action/upload-sarif@v2
-#        with:
-#          sarif_file: 'zerotier-docker-debian.sarif'
 
       - name: Update caching for podman
         uses: actions/cache/save@v3
