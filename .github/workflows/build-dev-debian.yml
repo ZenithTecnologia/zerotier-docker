@@ -2,6 +2,7 @@ name: Build Zerotier Dev - Debian version
 on:
   push:
     paths:
+      - .github/workflows/build-dev-debian.yml
       - Dockerfile.debian
     branches:
       - main

@@ -2,6 +2,7 @@ name: Build Zerotier Stable - UBI version
 on:
   push:
     paths:
+      - .github/workflows/build-stable-ubi.yml
       - Dockerfile
     branches:
       - main

@@ -2,6 +2,7 @@ name: Build Zerotier Stable - Debian version
 on:
   push:
     paths:
+      - .github/workflows/build-stable-debian.yml
       - Dockerfile.debian
     branches:
       - main
