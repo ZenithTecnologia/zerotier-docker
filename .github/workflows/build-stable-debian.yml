@@ -1,4 +1,4 @@
-name: Build Zerotier Dev - Debian version
+name: Build Zerotier Stable - Debian version
 on:
   push:
     paths:
@@ -19,7 +19,7 @@ jobs:
 
       - name: Environment Vars setup
         run: |
-          echo "zt_dev_sha=$(git ls-remote https://github.com/zerotier/ZeroTierOne.git --head refs/heads/dev | awk '{print $1}')" >> "$GITHUB_ENV"
+          echo "zt_version=$(git ls-remote --quiet --refs --tags https://github.com/zerotier/ZeroTierOne.git | cut --delimiter='/' --fields=3 | grep -Eo '^[[:digit:]]+.[[:digit:]]+.[[:digit:]]+$' | sort --version-sort | tail -n1)" >> "$GITHUB_ENV"
 
       - name: Tar as root
         run: |
@@ -50,43 +50,24 @@ jobs:
           username: ${{ secrets.ZENITH_QUAY_USER }}
           password: ${{ secrets.ZENITH_QUAY_TOKEN }}
 
-      - name: Build container - origin branch dev
+      - name: Build container - origin branch latest release
         id: build-dev-debian
         uses: redhat-actions/buildah-build@v2
         with:
           image: zerotier-docker
-          tags: dev-debian
+          tags: latest-debian stable-debian ${{ env.zt_version }}-debian
           layers: true
           containerfiles: |
             ./Dockerfile.debian
           build-args: |
-            zt_version=dev
+            zt_version=${{ env.zt_version }}
 
-      - name: Build container - origin branch dev - sha commit
-        id: build-sha-debian
-        uses: redhat-actions/buildah-build@v2
-        with:
-          image: zerotier-docker
-          tags: ${{ env.zt_dev_sha }}-debian
-          layers: true
-          containerfiles: |
-            ./Dockerfile.debian
-          build-args: |
-            zt_version=dev
-            quay_expiration=1w
 
-      - name: Push to Quay - origin branch dev
+      - name: Push to Quay - origin branch latest release
         uses: redhat-actions/push-to-registry@v2
         with:
           image: ${{ steps.build-dev-debian.outputs.image }}
           tags: ${{ steps.build-dev-debian.outputs.tags }}
-          registry: quay.io/zenithtecnologia
-
-      - name: Push to Quay - origin branch dev - sha commit
-        uses: redhat-actions/push-to-registry@v2
-        with:
-          image: ${{ steps.build-sha-debian.outputs.image }}
-          tags: ${{ steps.build-sha-debian.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
       - name: Update caching for podman
@@ -96,7 +77,7 @@ jobs:
             ~/.local/share/containers
           key: ${{ steps.cache-podman-restore.outputs.cache-primary-key }}
 
-      - name: Run Trivy vulnerability scanner - origin branch dev
+      - name: Run Trivy vulnerability scanner - origin branch latest release
         run: |
           podman run --privileged -v /tmp/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-debian.sarif --exit-code 1 --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev-debian.outputs.image }}
 

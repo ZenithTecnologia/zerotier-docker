@@ -19,8 +19,6 @@ jobs:
 
       - name: Environment Vars setup
         run: |
-          echo "zt_version_latest=$(git describe --tags `git rev-list --tags --max-count=1`)" >> "$GITHUB_ENV"
-          echo "zt_version=$(git describe --abbrev=0)" >> "$GITHUB_ENV"
           echo "zt_dev_sha=$(git ls-remote https://github.com/zerotier/ZeroTierOne.git --head refs/heads/dev | awk '{print $1}')" >> "$GITHUB_ENV"
 
       - name: Tar as root
