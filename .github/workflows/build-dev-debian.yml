@@ -1,6 +1,8 @@
-name: Build Zerotier Dev
+name: Build Zerotier Dev - Debian version
 on:
   push:
+    paths:
+      - Dockerfile.debian
     branches:
       - main
   schedule:
@@ -32,7 +34,15 @@ jobs:
         with:
           path: |
             ~/.local/share/containers
-          key: ${{ runner.os }}-zerotier-docker
+          key: ${{ runner.os }}-${{ runner.arch }}-zerotier-docker-debian
+
+      - name: Podman Socket
+        run: |
+          podman system service  --time=0 unix:///tmp/podman.sock &
+
+      - name: Fetch trivy
+        run: |
+          podman pull docker.io/aquasec/trivy:latest
 
       - name: Log in to Quay
         uses: redhat-actions/podman-login@v1
@@ -41,11 +51,7 @@ jobs:
           username: ${{ secrets.ZENITH_QUAY_USER }}
           password: ${{ secrets.ZENITH_QUAY_TOKEN }}
 
-      - name: Podman Socket
-        run: |
-          podman system service  --time=0 unix:///tmp/podman.sock &
-
-      - name: Build container for Debian - Origin branch dev
+      - name: Build container - origin branch dev
         id: build-dev-debian
         uses: redhat-actions/buildah-build@v2
         with:
@@ -57,7 +63,7 @@ jobs:
           build-args: |
             zt_version=dev
 
-      - name: Build container for Debian - Origin branch dev - sha commit
+      - name: Build container - origin branch dev - sha commit
         id: build-sha-debian
         uses: redhat-actions/buildah-build@v2
         with:
@@ -70,14 +76,14 @@ jobs:
             zt_version=dev
             quay_expiration=1w
 
-      - name: Push to Quay Debian - Origin branch dev
+      - name: Push to Quay - origin branch dev
         uses: redhat-actions/push-to-registry@v2
         with:
           image: ${{ steps.build-dev-debian.outputs.image }}
           tags: ${{ steps.build-dev-debian.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
-      - name: Push to Quay Debian - Origin branch dev - sha commit
+      - name: Push to Quay - origin branch dev - sha commit
         uses: redhat-actions/push-to-registry@v2
         with:
           image: ${{ steps.build-sha-debian.outputs.image }}
@@ -91,18 +97,11 @@ jobs:
             ~/.local/share/containers
           key: ${{ steps.cache-podman-restore.outputs.cache-primary-key }}
 
-      - name: Run Trivy vulnerability scanner - Debian origin branch dev
+      - name: Run Trivy vulnerability scanner - origin branch dev
         run: |
           podman run --privileged -v /tmp/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-debian.sarif --exit-code 1 --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev-debian.outputs.image }}
 
-      - name: Upload Trivy scan results to GitHub Security tab - Debian
+      - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'zerotier-docker-debian.sarif'
-
-      - name: Update caching for podman
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.local/share/containers
-          key: ${{ steps.cache-podman-restore.outputs.cache-primary-key }}

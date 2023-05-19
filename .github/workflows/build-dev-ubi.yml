@@ -1,6 +1,8 @@
-name: Build Zerotier Dev
+name: Build Zerotier Dev - UBI version
 on:
   push:
+    paths:
+      - Dockerfile
     branches:
       - main
   schedule:
@@ -32,7 +34,15 @@ jobs:
         with:
           path: |
             ~/.local/share/containers
-          key: ${{ runner.os }}-zerotier-docker
+          key: ${{ runner.os }}-${{ runner.arch }}-zerotier-docker-ubi
+
+      - name: Podman Socket
+        run: |
+          podman system service  --time=0 unix:///tmp/podman.sock &
+
+      - name: Fetch trivy
+        run: |
+          podman pull docker.io/aquasec/trivy:latest
 
       - name: Log in to Quay
         uses: redhat-actions/podman-login@v1
@@ -48,11 +58,7 @@ jobs:
           username: ${{ secrets.ZENITH_REDHAT_USER }}
           password: ${{ secrets.ZENITH_REDHAT_TOKEN }}
       
-      - name: Podman Socket
-        run: |
-          podman system service  --time=0 unix:///tmp/podman.sock &
-
-      - name: Build container for UBI - Origin branch dev
+      - name: Build container for UBI - origin branch dev
         id: build-dev
         uses: redhat-actions/buildah-build@v2
         with:
@@ -64,7 +70,7 @@ jobs:
           build-args: |
             zt_version=dev
 
-      - name: Build container for UBI - Origin branch dev - sha commit
+      - name: Build container for UBI - origin branch dev - sha commit
         id: build-sha
         uses: redhat-actions/buildah-build@v2
         with:
@@ -77,14 +83,14 @@ jobs:
             zt_version=dev
             quay_expiration=1w
 
-      - name: Push to Quay - Origin branch dev
+      - name: Push to Quay - origin branch dev
         uses: redhat-actions/push-to-registry@v2
         with:
           image: ${{ steps.build-dev.outputs.image }}
           tags: ${{ steps.build-dev.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
-      - name: Push to Quay - Origin branch dev - sha commit
+      - name: Push to Quay - origin branch dev - sha commit
         uses: redhat-actions/push-to-registry@v2
         with:
           image: ${{ steps.build-sha.outputs.image }}
@@ -98,18 +104,11 @@ jobs:
             ~/.local/share/containers
           key: ${{ steps.cache-podman-restore.outputs.cache-primary-key }}
 
-      - name: Run Trivy vulnerability scanner - Origin branch dev
+      - name: Run Trivy vulnerability scanner - origin branch dev
         run: |
           podman run --privileged -v /tmp/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-ubi.sarif --exit-code 1 --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev.outputs.image }}
 
-      - name: Upload Trivy scan results to GitHub Security tab - UBI
+      - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
         with:
           sarif_file: 'zerotier-docker-ubi.sarif'
-
-      - name: Update caching for podman
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.local/share/containers
-          key: ${{ steps.cache-podman-restore.outputs.cache-primary-key }}
