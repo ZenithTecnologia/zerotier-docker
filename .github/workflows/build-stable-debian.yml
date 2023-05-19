@@ -33,7 +33,7 @@ jobs:
         with:
           path: |
             ~/.local/share/containers
-          key: ${{ runner.os }}-${{ runner.arch }}-zerotier-docker-debian
+          key: ${{ runner.os }}-${{ runner.arch }}-zerotier-docker-debian-stable
 
       - name: Podman Socket
         run: |

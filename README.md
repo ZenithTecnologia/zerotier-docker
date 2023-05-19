@@ -21,7 +21,7 @@ This container is compatible with [Zerotier official image](https://github.com/z
 
 A Debian image is also available with some optimizations at `quay.io/zenithtecnologia/zerotier-docker:latest-debian`
 
-Images with sha-tag have a expiration time set to 90 days to keep house clean.
+Images with sha-tag have a expiration time set to 7 days to keep house clean.
 
 ## Notes about building
 
