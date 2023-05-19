@@ -3,9 +3,9 @@ Enterprise-ready Zerotier docker container
 
 ## Status
 
-[![Build Zerotier Dev - UBI version](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-dev-ubi.yml/badge.svg)](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-dev-ubi.yml)
-
-[![Build Zerotier Dev - Debian version](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-dev-debian.yml/badge.svg)](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-dev-debian.yml)
+| [![Build Zerotier Stable - UBI version](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-stable-ubi.yml/badge.svg)](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-stable-ubi.yml) | [![Build Zerotier Stable - Debian version](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-stable-debian.yml/badge.svg)](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-stable-debian.yml) |
+|:------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|:---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------:|
+|      [![Build Zerotier Dev - UBI version](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-dev-ubi.yml/badge.svg)](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-dev-ubi.yml)     |      [![Build Zerotier Dev - Debian version](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-dev-debian.yml/badge.svg)](https://github.com/ZenithTecnologia/zerotier-docker/actions/workflows/build-dev-debian.yml)     |
 
 ## Motivation
 
