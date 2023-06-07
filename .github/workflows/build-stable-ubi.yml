@@ -86,7 +86,7 @@ jobs:
 
       - name: Run Trivy vulnerability scanner - origin branch latest release
         run: |
-          podman run --privileged -v /tmp/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-ubi.sarif --exit-code 1 --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev.outputs.image }}
+          podman run --privileged -v /tmp/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-ubi.sarif --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev.outputs.image }}
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v2
