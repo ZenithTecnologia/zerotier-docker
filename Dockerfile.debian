@@ -1,6 +1,15 @@
 # vim: ft=dockerfile
 
-FROM docker.io/library/debian:bullseye-slim as build
+# Layer 1 - Updated Debian
+FROM docker.io/library/debian:bullseye-slim as debian-updated
+
+RUN apt -y update \
+    && apt -y dist-upgrade \
+    && apt -y clean
+
+# Layer 2 - From updated, build
+FROM scratch as build
+COPY --from=debian-updated / /
 
 ARG zt_version
 ARG curl_version=8.0.1
@@ -38,7 +47,9 @@ RUN mkdir curl \
 
 # --- end of build --- #
 
-FROM docker.io/library/debian:bullseye-slim
+# Layer 3 - From updated, final
+FROM scratch as final
+COPY --from=debian-updated / /
 
 ARG quay_expiration=never
 
