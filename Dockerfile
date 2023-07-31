@@ -60,6 +60,6 @@ ARG zt_version
 # 1.10.6: From dev until joining get fixed 
 ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release /entrypoint.sh
 
-HEALTHCHECK --interval=1s CMD bash /healthcheck.sh
+HEALTHCHECK --interval=5s --start-period=30s --retries=5 CMD bash /healthcheck.sh
 
 ENTRYPOINT ["/tini", "--", "/entrypoint.sh"]
