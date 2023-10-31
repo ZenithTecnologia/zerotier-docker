@@ -1,7 +1,7 @@
 # vim: ft=dockerfile
 
 # Layer 1 - Updated Debian
-FROM docker.io/library/debian:bullseye-slim as debian-updated
+FROM docker.io/library/debian:bookworm-slim as debian-updated
 
 RUN apt -y update \
     && apt -y dist-upgrade \
