@@ -34,7 +34,7 @@ jobs:
         with:
           path: |
             ~/.local/share/containers
-          key: ${{ runner.os }}-${{ runner.arch }}-zerotier-docker-ubi
+          key: ${{ runner.os }}-${{ runner.arch }}-zerotier-docker-ubi-dev
 
       - name: Podman Socket
         run: |
