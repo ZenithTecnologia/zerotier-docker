@@ -29,8 +29,8 @@ jobs:
           sudo chmod +x /usr/bin/tar
 
       - name: Enable caching for podman
-        id: cache-podman-restore
-        uses: actions/cache/restore@v3
+        id: cache-podman
+        uses: actions/cache@v3
         with:
           path: |
             ~/.local/share/containers
@@ -76,13 +76,6 @@ jobs:
           image: ${{ steps.build-dev.outputs.image }}
           tags: ${{ steps.build-dev.outputs.tags }}
           registry: quay.io/zenithtecnologia
-
-      - name: Update caching for podman
-        uses: actions/cache/save@v3
-        with:
-          path: |
-            ~/.local/share/containers
-          key: ${{ steps.cache-podman-restore.outputs.cache-primary-key }}
 
       - name: Run Trivy vulnerability scanner - origin branch latest release
         run: |
