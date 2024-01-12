@@ -15,6 +15,20 @@ This version uses only RHEL Universal Base Image as platform, [catatonit init sy
 
 Some system like [VyOS](https://docs.vyos.io/en/equuleus/configuration/container/index.html) does not support `--init` flat addition.
 
+## Images Available:
+
+Zerotier stable versions is available on tag `image:x.yy.zz` template starting at 1.12.2. Old stable versions does not get revisions on building. 
+
+Tags `stable` and `latest` points to latest release version from upstream. `dev` points to latest commit sha build at building time.
+
+Main image tags are following:
+
+| Kind | Tags | Build periodicity | Archs Available |
+|-------|------|-------------------|-----------------|
+| UBI | [stable](https://quay.io/repository/zenithtecnologia/zerotier-docker/tag/stable) / [latest](https://quay.io/repository/zenithtecnologia/zerotier-docker/tag/latest) <br /> [dev](https://quay.io/repository/zenithtecnologia/zerotier-docker/tag/dev) / [<commit_sha>](https://quay.io/repository/zenithtecnologia/zerotier-docker/tag/dev) | Weekly | linux/amd64 <br /> linux/arm64 <br /> linux/ppc64le |
+| Debian | [stable-debian](https://quay.io/repository/zenithtecnologia/zerotier-docker/tag/stable-debian) / [latest-debian](https://quay.io/repository/zenithtecnologia/zerotier-docker/tag/latest-debian) <br /> [dev-debian](https://quay.io/repository/zenithtecnologia/zerotier-docker/tag/dev-debian) / [<commit_sha>-debian](https://quay.io/repository/zenithtecnologia/zerotier-docker/tag/dev-debian) | Weekly | linux/amd64 <br /> linux/arm/v7 <br /> linux/arm64/v8 |
+
+
 ## How to use
 
 This container is compatible with [Zerotier official image](https://github.com/zerotier/ZeroTierOne/blob/dev/README.docker.md) way to use. To pull the image you can use `podman pull quay.io/zenithtecnologia/zerotier-docker:latest` or `docker pull quay.io/zenithtecnologia/zerotier-docker:latest`
