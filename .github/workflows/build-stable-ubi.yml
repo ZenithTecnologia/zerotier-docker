@@ -68,7 +68,7 @@ jobs:
           image: zerotier-docker
           tags: latest stable ${{ env.zt_version }}
           layers: true
-          platforms: linux/amd64, linux/arm64, linux/ppc64le, linux/s390x
+          platforms: linux/amd64, linux/arm64, linux/ppc64le
           containerfiles: |
             ./Dockerfile
           build-args: |
