@@ -53,6 +53,10 @@ jobs:
           registry: "quay.io"
           username: ${{ secrets.ZENITH_QUAY_USER }}
           password: ${{ secrets.ZENITH_QUAY_TOKEN }}
+ 
+      - name: Remove localhost/zerotier-docker:dev-debian
+        run: |
+          podman image rm -f localhost/zerotier-docker:dev-debian
 
       - name: Build container - origin branch dev
         id: build-dev-debian

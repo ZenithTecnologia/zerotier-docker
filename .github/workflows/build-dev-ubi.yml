@@ -60,6 +60,10 @@ jobs:
           registry: "registry.redhat.io"
           username: ${{ secrets.ZENITH_REDHAT_USER }}
           password: ${{ secrets.ZENITH_REDHAT_TOKEN }}
+
+      - name: Remove localhost/zerotier-docker:dev
+        run: |
+          podman image rm -f localhost/zerotier-docker:dev
       
       - name: Build container for UBI - origin branch dev
         id: build-dev
