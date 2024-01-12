@@ -24,7 +24,19 @@ RUN curl -sSL https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypo
 RUN mkdir /zt-root
 
 RUN apt -y update \
-    && apt -y -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 install build-essential pkg-config git clang curl libssl-dev linux-libc-dev ca-certificates catatonit
+    && apt -y -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 install build-essential pkg-config git clang libssl-dev linux-libc-dev ca-certificates catatonit
+
+RUN mkdir curl \
+    && cd curl \
+    && curl -O https://curl.se/download/curl-${curl_version}.tar.gz \
+    && tar -xvzf curl-${curl_version}.tar.gz \
+    && cd curl-${curl_version} \
+    && LDFLAGS="-static" PKG_CONFIG="pkg-config --static" ./configure --disable-shared --enable-static --disable-ldap --enable-ipv6 --without-ssl \
+    && make -j$(nproc --ignore=1) V=1 LDFLAGS="-static -all-static" \ 
+    && strip src/curl \
+    && ./src/curl -V \
+    && mv -v ./src/curl /curl \
+    && cp /curl /usr/local/bin/
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal #debian
 
@@ -36,17 +48,6 @@ RUN cd ZeroTierOne \
     && make LDFLAGS="-lssl -lcrypto" -j $(nproc --ignore=1) one \
     && DESTDIR=/zt-root make install \
     && rm -rfv /zt-root/var/lib/zerotier-one
-
-RUN mkdir curl \
-    && cd curl \
-    && curl -O https://curl.se/download/curl-${curl_version}.tar.gz \
-    && tar -xvzf curl-${curl_version}.tar.gz \
-    && cd curl-${curl_version} \
-    && LDFLAGS="-static" PKG_CONFIG="pkg-config --static" ./configure --disable-shared --enable-static --disable-ldap --enable-ipv6 --without-ssl \
-    && make -j$(nproc --ignore=1) V=1 LDFLAGS="-static -all-static" \ 
-    && strip src/curl \
-    && ./src/curl -V \
-    && mv -v ./src/curl /curl
 
 # --- end of build --- #
 
