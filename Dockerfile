@@ -3,11 +3,15 @@
 FROM registry.redhat.io/ubi9:latest as build
 
 ARG zt_version
-ARG curl_version=8.0.1
+ARG curl_version=8.5.0
 
 WORKDIR /tmp
 
 # Since this image will be discarded in the end, nobody cares about tons of RUN statement except build cache :)
+
+# Patch entrypoint to echo -n
+RUN curl -sSL https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release | sed 's,echo "$content" > "/var/lib/zerotier-one/$file",echo -n "$content" > "/var/lib/zerotier-one/$file",g' > /entrypoint.sh \
+    && chmod 0755 /entrypoint.sh
 
 RUN dnf -y install make gcc gcc-c++ git clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-static
 
@@ -34,6 +38,13 @@ RUN mkdir curl \
     && ./src/curl -V \
     && mv -v ./src/curl /curl
 
+RUN git clone --depth=1 --branch=v0.2.0 https://github.com/openSUSE/catatonit.git 2>&1 > /dev/null \
+    && cd catatonit \
+    && dnf -y install autoconf automake libtool \
+    && ./autogen.sh \
+    && ./configure \
+    && make -j$(nproc --ignore=1)
+
 # --- end of build --- #
 
 FROM registry.redhat.io/ubi9/openssl:latest
@@ -51,15 +62,9 @@ LABEL quay.expires-after ${quay_expiration}
 
 COPY --from=build /zt-root /
 COPY --from=build --chmod=0755 /curl /usr/bin/curl
-
-ENV TINI_VERSION v0.19.0
-ADD --chmod=0755 https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-
-ARG zt_version
-#ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/${zt_version}/entrypoint.sh.release /entrypoint.sh
-# 1.10.6: From dev until joining get fixed 
-ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release /entrypoint.sh
+COPY --from=build --chmod=0755 /entrypoint.sh /entrypoint.sh
+COPY --from=build --chmod=0755 /tmp/catatonit/catatonit /catatonit
 
 HEALTHCHECK --interval=5s --start-period=30s --retries=5 CMD bash /healthcheck.sh
 
-ENTRYPOINT ["/tini", "--", "/entrypoint.sh"]
+ENTRYPOINT ["/catatonit", "--", "/entrypoint.sh"]

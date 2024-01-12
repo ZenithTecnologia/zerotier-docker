@@ -9,7 +9,7 @@ Enterprise-ready Zerotier docker container
 
 ## Motivation
 
-This version uses only RHEL Universal Base Image as platform, [tini init system](https://github.com/krallin/tini) and official [rustup](https://www.rust-lang.org/tools/install) to build and run image, assuring complete compatibility with RedHat environment. It also bring some optimization in container size and forced PID1-handler provided by tini.
+This version uses only RHEL Universal Base Image as platform, [catatonit init system](https://github.com/openSUSE/catatonit) and official [rustup](https://www.rust-lang.org/tools/install) to build and run image, assuring complete compatibility with RedHat environment. It also bring some optimization in container size and forced PID1-handler provided by tini.
 
 ### Why not use docker `--init`?
 

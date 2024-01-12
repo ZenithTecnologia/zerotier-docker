@@ -18,10 +18,13 @@ WORKDIR /tmp
 
 # Since this image will be discarded in the end, nobody cares about tons of RUN statement except build cache :)
 
+RUN curl -sSL https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release | sed 's,echo "$content" > "/var/lib/zerotier-one/$file",echo -n "$content" > "/var/lib/zerotier-one/$file",g' > /entrypoint.sh \
+	    && chmod 0755 /entrypoint.sh
+
 RUN mkdir /zt-root
 
 RUN apt -y update \
-    && apt -y -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 install build-essential pkg-config git clang curl libssl-dev linux-libc-dev ca-certificates
+    && apt -y -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 install build-essential pkg-config git clang curl libssl-dev linux-libc-dev ca-certificates catatonit
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal #debian
 
@@ -64,14 +67,9 @@ LABEL quay.expires-after ${quay_expiration}
 
 COPY --from=build /zt-root /
 COPY --from=build --chmod=0755 /curl /usr/bin/curl
-
-ENV TINI_VERSION v0.19.0
-ADD --chmod=0755 https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
-
-ARG zt_version
-# 1.10.6: From dev until joining get fixed 
-ADD --chmod=0755 https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release /entrypoint.sh
+COPY --from=build --chmod=0755 /entrypoint.sh /entrypoint.sh
+COPY --from=build --chmod=0755 /usr/bin/catatonit /catatonit
 
 HEALTHCHECK --interval=1s CMD bash /healthcheck.sh
 
-ENTRYPOINT ["/tini", "--", "/entrypoint.sh"]
+ENTRYPOINT ["/catatonit", "--", "/entrypoint.sh"]
