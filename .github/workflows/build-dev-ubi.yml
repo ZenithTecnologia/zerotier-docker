@@ -15,6 +15,9 @@ jobs:
     name: Build and push to registry
     runs-on: ubuntu-latest
     steps:
+      - name: Install qemu dependency
+        uses: docker/setup-qemu-action@v3
+
       - name: Clone the repository
         uses: actions/checkout@v3
 
