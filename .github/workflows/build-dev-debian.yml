@@ -75,6 +75,8 @@ jobs:
           tags: ${{ env.zt_dev_sha }}-debian
           layers: true
           platforms: linux/amd64, linux/arm/v7, linux/arm64/v8
+          labels: |
+            quay.expires-after=1w
           containerfiles: |
             ./Dockerfile.debian
           build-args: |
