@@ -63,7 +63,7 @@ jobs:
 
       - name: Remove localhost/zerotier-docker:dev
         run: |
-          podman image rm -f localhost/zerotier-docker:dev
+          podman image rm -f localhost/zerotier-docker:dev || true
       
       - name: Build container for UBI - origin branch dev
         id: build-dev

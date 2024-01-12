@@ -56,7 +56,7 @@ jobs:
 
       - name: Remove localhost/zerotier-docker:dev
         run: |
-          podman image rm -f localhost/zerotier-docker:dev
+          podman image rm -f localhost/zerotier-docker:dev-debian || true
 
       - name: Build container - origin branch dev
         id: build-dev-debian
