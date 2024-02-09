@@ -13,7 +13,7 @@ WORKDIR /tmp
 RUN curl -sSL https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release | sed 's,echo "$content" > "/var/lib/zerotier-one/$file",echo -n "$content" > "/var/lib/zerotier-one/$file",g' > /entrypoint.sh \
     && chmod 0755 /entrypoint.sh
 
-RUN dnf -y install make gcc gcc-c++ git clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-static \
+RUN dnf -y install make gcc gcc-c++ git clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-devel \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
@@ -23,10 +23,11 @@ RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroT
     && cd ZeroTierOne \
     && git log --pretty=oneline -n1 \
     && rm -rf .git \
-    && make LDFLAGS="-static-libgcc -static-libstdc++" -j $(nproc --ignore=1) one \
+    && make LDFLAGS="-static-libstdc++" -j $(nproc --ignore=1) one \
     && mkdir /zt-root \
     && DESTDIR=/zt-root make install \
     && rm -rfv /zt-root/var/lib/zerotier-one \
+    && strip /zt-root/usr/sbin/zerotier-one \
     && cd .. \
     && rm -rf ZeroTierOne
 
@@ -36,8 +37,8 @@ RUN mkdir curl \
     && tar -xvzf curl-${curl_version}.tar.gz \
     && rm -rf curl-${curl_version}.tar.gz \
     && cd curl-${curl_version} \
-    && LDFLAGS="-static" PKG_CONFIG="pkg-config --static" ./configure --disable-shared --enable-static --disable-ldap --enable-ipv6 --without-ssl \
-    && make -j$(nproc --ignore=1) V=1 LDFLAGS="-static -all-static" \ 
+    && ./configure --disable-shared --disable-ldap --enable-ipv6 --with-openssl \
+    && make -j$(nproc --ignore=1) V=1 \ 
     && strip src/curl \
     && ./src/curl -V \
     && mv -v ./src/curl /curl \
@@ -52,6 +53,7 @@ RUN git clone --depth=1 --branch=v0.2.0 https://github.com/openSUSE/catatonit.gi
     && ./autogen.sh \
     && ./configure \
     && make -j$(nproc --ignore=1) \
+    && strip catatonit \
     && cd .. \
     && mv catatonit/catatonit /catatonit \
     && rm -rf catatonit

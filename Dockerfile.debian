@@ -5,6 +5,7 @@ FROM docker.io/library/debian:bookworm-slim as debian-updated
 
 RUN apt -y update \
     && apt -y dist-upgrade \
+    && apt -y --no-install-recommends install libssl3 ca-certificates \
     && apt -y clean
 
 # Layer 2 - From updated, build
@@ -18,35 +19,50 @@ WORKDIR /tmp
 
 # Since this image will be discarded in the end, nobody cares about tons of RUN statement except build cache :)
 
+RUN apt -y update \
+    && apt -y -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 install build-essential pkg-config autoconf automake libtool git clang curl libssl-dev linux-libc-dev ca-certificates
+
 RUN curl -sSL https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release | sed 's,echo "$content" > "/var/lib/zerotier-one/$file",echo -n "$content" > "/var/lib/zerotier-one/$file",g' > /entrypoint.sh \
-	    && chmod 0755 /entrypoint.sh
+    && chmod 0755 /entrypoint.sh
 
 RUN mkdir /zt-root
-
-RUN apt -y update \
-    && apt -y -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 install build-essential pkg-config git clang curl libssl-dev linux-libc-dev ca-certificates catatonit
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal #debian
 
 RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
     && cd ZeroTierOne \
-    && git log --pretty=oneline -n1 
-
-RUN cd ZeroTierOne \
+    && git log --pretty=oneline -n1 \
+    && rm -rf .git \
     && make LDFLAGS="-lssl -lcrypto" -j $(nproc --ignore=1) one \
     && DESTDIR=/zt-root make install \
-    && rm -rfv /zt-root/var/lib/zerotier-one
+    && rm -rfv /zt-root/var/lib/zerotier-one \
+    && strip /zt-root/usr/sbin/zerotier-one \
+    && cd .. \
+    && rm -rf ZeroTierOne
 
 RUN mkdir curl \
     && cd curl \
     && curl -O https://curl.se/download/curl-${curl_version}.tar.gz \
     && tar -xvzf curl-${curl_version}.tar.gz \
     && cd curl-${curl_version} \
-    && LDFLAGS="-static" PKG_CONFIG="pkg-config --static" ./configure --disable-shared --enable-static --disable-ldap --enable-ipv6 --without-ssl \
-    && make -j$(nproc --ignore=1) V=1 LDFLAGS="-static -all-static" \ 
+    && ./configure --disable-shared --disable-ldap --enable-ipv6 --with-openssl \
+    && make -j$(nproc --ignore=1) V=1 \ 
     && strip src/curl \
     && ./src/curl -V \
-    && mv -v ./src/curl /curl
+    && mv -v ./src/curl /curl \
+    && cd .. \
+    && rm -rf curl
+
+RUN git clone --depth=1 --branch=v0.2.0 https://github.com/openSUSE/catatonit.git 2>&1 > /dev/null \
+    && cd catatonit \
+    && rm -rf /var/cache/yum \
+    && ./autogen.sh \
+    && ./configure \
+    && make -j$(nproc --ignore=1) \
+    && strip catatonit \
+    && cd .. \
+    && mv catatonit/catatonit /catatonit \
+    && rm -rf catatonit
 
 # --- end of build --- #
 
@@ -68,7 +84,7 @@ LABEL quay.expires-after ${quay_expiration}
 COPY --from=build /zt-root /
 COPY --from=build --chmod=0755 /curl /usr/bin/curl
 COPY --from=build --chmod=0755 /entrypoint.sh /entrypoint.sh
-COPY --from=build --chmod=0755 /usr/bin/catatonit /catatonit
+COPY --from=build --chmod=0755 /catatonit /catatonit
 
 HEALTHCHECK --interval=1s CMD bash /healthcheck.sh
 
