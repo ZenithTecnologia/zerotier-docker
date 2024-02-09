@@ -13,37 +13,48 @@ WORKDIR /tmp
 RUN curl -sSL https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release | sed 's,echo "$content" > "/var/lib/zerotier-one/$file",echo -n "$content" > "/var/lib/zerotier-one/$file",g' > /entrypoint.sh \
     && chmod 0755 /entrypoint.sh
 
-RUN dnf -y install make gcc gcc-c++ git clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-static
+RUN dnf -y install make gcc gcc-c++ git clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-static \
+    && dnf clean all \
+    && rm -rf /var/cache/yum
 
 RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal #rhel
 
 RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
     && cd ZeroTierOne \
-    && git log --pretty=oneline -n1 
-
-RUN cd ZeroTierOne \
+    && git log --pretty=oneline -n1 \
+    && rm -rf .git \
     && make LDFLAGS="-static-libgcc -static-libstdc++" -j $(nproc --ignore=1) one \
     && mkdir /zt-root \
     && DESTDIR=/zt-root make install \
-    && rm -rfv /zt-root/var/lib/zerotier-one
+    && rm -rfv /zt-root/var/lib/zerotier-one \
+    && cd .. \
+    && rm -rf ZeroTierOne
 
 RUN mkdir curl \
     && cd curl \
     && curl -O https://curl.se/download/curl-${curl_version}.tar.gz \
     && tar -xvzf curl-${curl_version}.tar.gz \
+    && rm -rf curl-${curl_version}.tar.gz \
     && cd curl-${curl_version} \
     && LDFLAGS="-static" PKG_CONFIG="pkg-config --static" ./configure --disable-shared --enable-static --disable-ldap --enable-ipv6 --without-ssl \
     && make -j$(nproc --ignore=1) V=1 LDFLAGS="-static -all-static" \ 
     && strip src/curl \
     && ./src/curl -V \
-    && mv -v ./src/curl /curl
+    && mv -v ./src/curl /curl \
+    && cd .. \
+    && rm -rf curl
 
 RUN git clone --depth=1 --branch=v0.2.0 https://github.com/openSUSE/catatonit.git 2>&1 > /dev/null \
     && cd catatonit \
     && dnf -y install autoconf automake libtool \
+    && dnf clean all \
+    && rm -rf /var/cache/yum \
     && ./autogen.sh \
     && ./configure \
-    && make -j$(nproc --ignore=1)
+    && make -j$(nproc --ignore=1) \
+    && cd .. \
+    && mv catatonit/catatonit /catatonit \
+    && rm -rf catatonit
 
 # --- end of build --- #
 
@@ -63,7 +74,7 @@ LABEL quay.expires-after ${quay_expiration}
 COPY --from=build /zt-root /
 COPY --from=build --chmod=0755 /curl /usr/bin/curl
 COPY --from=build --chmod=0755 /entrypoint.sh /entrypoint.sh
-COPY --from=build --chmod=0755 /tmp/catatonit/catatonit /catatonit
+COPY --from=build --chmod=0755 /catatonit /catatonit
 
 HEALTHCHECK --interval=5s --start-period=30s --retries=5 CMD bash /healthcheck.sh
 
