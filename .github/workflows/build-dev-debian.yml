@@ -19,7 +19,7 @@ jobs:
         uses: docker/setup-qemu-action@v3
 
       - name: Clone the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Environment Vars setup
         run: |
@@ -33,7 +33,7 @@ jobs:
 
       - name: Enable caching for podman
         id: cache-podman
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: |
             ~/.local/share/containers
@@ -60,7 +60,7 @@ jobs:
 
       - name: Build container - origin branch dev
         id: build-dev-debian
-        uses: redhat-actions/buildah-build@v2
+        uses: redhat-actions/buildah-build@c79846fb306beeba490e89fb75d2d1af95831e79
         with:
           image: zerotier-docker
           tags: dev-debian
@@ -73,7 +73,7 @@ jobs:
 
       - name: Build container - origin branch dev - sha commit
         id: build-sha-debian
-        uses: redhat-actions/buildah-build@v2
+        uses: redhat-actions/buildah-build@c79846fb306beeba490e89fb75d2d1af95831e79
         with:
           image: zerotier-docker
           tags: ${{ env.zt_dev_sha }}-debian
