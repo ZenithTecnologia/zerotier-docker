@@ -3,7 +3,6 @@
 FROM registry.redhat.io/ubi9:latest as build
 
 ARG zt_version
-ARG curl_version=8.5.0
 
 WORKDIR /tmp
 
@@ -33,10 +32,12 @@ RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroT
 
 RUN mkdir curl \
     && cd curl \
-    && curl -O https://curl.se/download/curl-${curl_version}.tar.gz \
-    && tar -xvzf curl-${curl_version}.tar.gz \
-    && rm -rf curl-${curl_version}.tar.gz \
-    && cd curl-${curl_version} \
+    && curl -sSL https://api.github.com/repos/curl/curl/releases/latest \
+    | grep .\*browser_download_url.\*tar.gz\"\$ \
+    | cut -d \" -f 4 \
+    | xargs curl -sSL \
+    | tar -xvz \
+    && cd curl-* \
     && ./configure --disable-shared --disable-ldap --enable-ipv6 --with-openssl \
     && make -j$(nproc --ignore=1) V=1 \ 
     && strip src/curl \
