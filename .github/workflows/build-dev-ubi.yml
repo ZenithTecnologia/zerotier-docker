@@ -4,6 +4,7 @@ on:
     paths:
       - .github/workflows/build-dev-ubi.yml
       - Dockerfile
+      - /patches/*.patch
     branches:
       - main
   schedule:

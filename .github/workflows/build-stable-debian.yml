@@ -4,6 +4,7 @@ on:
     paths:
       - .github/workflows/build-stable-debian.yml
       - Dockerfile.debian
+      - /patches/*.patch
     branches:
       - main
   schedule:
