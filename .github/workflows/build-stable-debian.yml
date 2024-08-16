@@ -80,6 +80,6 @@ jobs:
           podman run --privileged -v /tmp/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-debian.sarif --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev-debian.outputs.image }}
 
       - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v2
+        uses: github/codeql-action/upload-sarif@v3
         with:
           sarif_file: 'zerotier-docker-debian.sarif'
