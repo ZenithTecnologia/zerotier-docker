@@ -56,7 +56,7 @@ jobs:
 
       - name: Build container - origin branch latest release
         id: build-dev-debian
-        uses: redhat-actions/buildah-build@c79846fb306beeba490e89fb75d2d1af95831e79
+        uses: redhat-actions/buildah-build@v2
         with:
           image: zerotier-docker
           tags: latest-debian stable-debian ${{ env.zt_version }}-debian

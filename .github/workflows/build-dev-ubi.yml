@@ -67,7 +67,7 @@ jobs:
       
       - name: Build container for UBI - origin branch dev
         id: build-dev
-        uses: redhat-actions/buildah-build@c79846fb306beeba490e89fb75d2d1af95831e79
+        uses: redhat-actions/buildah-build@v2
         with:
           image: zerotier-docker
           tags: dev
@@ -80,7 +80,7 @@ jobs:
 
       - name: Build container for UBI - origin branch dev - sha commit
         id: build-sha
-        uses: redhat-actions/buildah-build@c79846fb306beeba490e89fb75d2d1af95831e79
+        uses: redhat-actions/buildah-build@v2
         with:
           image: zerotier-docker
           tags: ${{ env.zt_dev_sha }}
