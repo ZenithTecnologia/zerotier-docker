@@ -6,13 +6,15 @@ ARG zt_version
 
 WORKDIR /tmp
 
+ADD patches /patches
+
 # Since this image will be discarded in the end, nobody cares about tons of RUN statement except build cache :)
 
 # Patch entrypoint to echo -n
 RUN curl -sSL https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release | sed 's,echo "$content" > "/var/lib/zerotier-one/$file",echo -n "$content" > "/var/lib/zerotier-one/$file",g' > /entrypoint.sh \
     && chmod 0755 /entrypoint.sh
 
-RUN dnf -y install make gcc gcc-c++ git clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-devel \
+RUN dnf -y install make gcc gcc-c++ git patch clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-devel \
     && dnf clean all \
     && rm -rf /var/cache/yum
 
@@ -22,6 +24,8 @@ RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroT
     && cd ZeroTierOne \
     && git log --pretty=oneline -n1 \
     && rm -rf .git \
+    && patchlist=$(ls -1 /patches/${zt_version}-*.patch 2> /dev/null || true) \
+    && if [ -n "${patchlist}" ]; then for patch in "${patchlist}"; do echo "Applying patch ${patch}" ; patch -p1 <${patch} ; done ; fi \
     && make LDFLAGS="-static-libstdc++" -j $(nproc --ignore=1) one \
     && mkdir /zt-root \
     && DESTDIR=/zt-root make install \
