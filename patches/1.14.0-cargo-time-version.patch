@@ -1,0 +1,13 @@
+diff --git a/rustybits/Cargo.lock b/rustybits/Cargo.lock
+index 1b01a0d..064bd93 100644
+--- a/rustybits/Cargo.lock
++++ b/rustybits/Cargo.lock
+@@ -2855,7 +2855,7 @@ dependencies = [
+ 
+ [[package]]
+ name = "time"
+-version = "0.3.34"
++version = "0.3.36"
+ source = "registry+https://github.com/rust-lang/crates.io-index"
+ checksum = "c8248b6521bb14bc45b4067159b9b6ad792e2d6d754d6c41fb50e29fefe38749"
+ dependencies = [
