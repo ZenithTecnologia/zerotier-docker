@@ -51,7 +51,10 @@ RUN mkdir curl \
     | xargs curl -sSL \
     | tar -xvz \
     && cd curl-* \
-    && ./configure --disable-shared --disable-ldap --enable-ipv6 --with-openssl \
+    && ./configure --without-libpsl --disable-dict --disable-gopher -disable-imap --disable-ldap \ 
+       --disable-ldaps --disable-mqtt --disable-ntlm --disable-pop3 --disable-rtsp --disable-smb \
+       --disable-smtp --disable-tftp --disable-tls-srp --disable-websockets --without-brotli --without-libssh \
+       --disable-shared --enable-ipv6 --with-openssl \
     && make -j$(nproc --ignore=1) V=1 \ 
     && strip src/curl \
     && ./src/curl -V \
