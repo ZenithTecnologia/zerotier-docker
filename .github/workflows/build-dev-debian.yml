@@ -44,10 +44,6 @@ jobs:
         run: |
           podman system service  --time=0 unix:///tmp/podman.sock &
 
-      - name: Fetch trivy
-        run: |
-          podman pull docker.io/aquasec/trivy:latest
-
       - name: Log in to Quay
         uses: redhat-actions/podman-login@v1
         with:
@@ -102,11 +98,19 @@ jobs:
           tags: ${{ steps.build-sha-debian.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
-      - name: Run Trivy vulnerability scanner - origin branch dev
-        run: |
-          podman run --privileged -v /tmp/podman.sock:/var/run/docker.sock -v ./:/data docker.io/aquasec/trivy:latest image --quiet --format sarif --output /data/zerotier-docker-debian.sarif --severity CRITICAL,HIGH --vuln-type os,library --ignore-unfixed ${{ steps.build-dev-debian.outputs.image }}
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.27.0
+        with:
+          image-ref: '${{ steps.build-stage.outputs.image }}'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: zerotier-docker-debian-dev.sarif
+          limit-severities-for-sarif: true
 
       - name: Upload Trivy scan results to GitHub Security tab
         uses: github/codeql-action/upload-sarif@v3
         with:
-          sarif_file: 'zerotier-docker-debian.sarif'
+          sarif_file: 'zerotier-docker-debian-dev.sarif'
+
