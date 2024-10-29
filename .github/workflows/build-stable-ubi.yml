@@ -59,7 +59,7 @@ jobs:
           password: ${{ secrets.ZENITH_REDHAT_TOKEN }}
       
       - name: Build container for UBI - origin branch latest release
-        id: build-dev
+        id: build-stable-ubi
         uses: redhat-actions/buildah-build@v2
         with:
           image: zerotier-docker
@@ -74,14 +74,14 @@ jobs:
       - name: Push to Quay - origin branch latest release 
         uses: redhat-actions/push-to-registry@v2
         with:
-          image: ${{ steps.build-dev.outputs.image }}
-          tags: ${{ steps.build-dev.outputs.tags }}
+          image: ${{ steps.build-stable-ubi.outputs.image }}
+          tags: ${{ steps.build-stable-ubi.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.27.0
         with:
-          image-ref: '${{ steps.build-stage.outputs.image }}'
+          image-ref: '${{ steps.build-stable-ubi.outputs.image }}'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'

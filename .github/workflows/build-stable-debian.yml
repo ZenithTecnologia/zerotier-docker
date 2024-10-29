@@ -52,7 +52,7 @@ jobs:
           password: ${{ secrets.ZENITH_QUAY_TOKEN }}
 
       - name: Build container - origin branch latest release
-        id: build-dev-debian
+        id: build-stable-debian
         uses: redhat-actions/buildah-build@v2
         with:
           image: zerotier-docker
@@ -68,14 +68,14 @@ jobs:
       - name: Push to Quay - origin branch latest release
         uses: redhat-actions/push-to-registry@v2
         with:
-          image: ${{ steps.build-dev-debian.outputs.image }}
-          tags: ${{ steps.build-dev-debian.outputs.tags }}
+          image: ${{ steps.build-stable-debian.outputs.image }}
+          tags: ${{ steps.build-stable-debian.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
       - name: Run Trivy vulnerability scanner
         uses: aquasecurity/trivy-action@0.27.0
         with:
-          image-ref: '${{ steps.build-stage.outputs.image }}'
+          image-ref: '${{ steps.build-stable-debian.outputs.image }}'
           ignore-unfixed: true
           vuln-type: 'os,library'
           severity: 'CRITICAL,HIGH'
