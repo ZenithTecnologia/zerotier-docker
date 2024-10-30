@@ -66,9 +66,11 @@ RUN git clone --depth=1 --branch=v0.2.0 https://github.com/openSUSE/catatonit.gi
     && mv catatonit/catatonit /catatonit \
     && rm -rf catatonit
 
+RUN dnf -y --installroot=/zt-root --setopt=install_weak_deps=False install redhat-release openssl openssl-libs zlib glibc glibc-common glibc-minimal-langpack
+
 # --- end of build --- #
 
-FROM registry.redhat.io/ubi9/openssl:latest
+FROM scratch
 
 ARG quay_expiration=never
 
