@@ -1,0 +1,100 @@
+# vim: ft=dockerfile
+
+# Layer 1 - Updated Debian
+FROM --platform=$TARGETPLATFORM docker.io/tianon/raspbian:bookworm-slim as debian-updated
+
+RUN apt -y update \
+    && apt -y dist-upgrade \
+    && apt -y --no-install-recommends install libssl3 ca-certificates \
+    && apt -y clean
+
+# Layer 2 - From updated, build
+FROM --platform=$TARGETPLATFORM scratch as build
+COPY --from=debian-updated / /
+
+ARG zt_version
+
+WORKDIR /tmp
+
+ADD patches /patches
+
+# Since this image will be discarded in the end, nobody cares about tons of RUN statement except build cache :)
+
+RUN apt -y update \
+    && apt -y -o APT::Install-Suggests=0 -o APT::Install-Recommends=0 install build-essential pkg-config autoconf automake libtool git clang curl libssl-dev linux-libc-dev ca-certificates
+
+RUN curl -sSL https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release | sed 's,echo "$content" > "/var/lib/zerotier-one/$file",echo -n "$content" > "/var/lib/zerotier-one/$file",g' > /entrypoint.sh \
+    && chmod 0755 /entrypoint.sh
+
+RUN mkdir /zt-root
+
+RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal --default-host=arm-unknown-linux-gnueabihf --target=arm-unknown-linux-gnueabihf  --default-toolchain=stable #debian
+
+RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
+    && cd ZeroTierOne \
+    && git log --pretty=oneline -n1 \
+    && rm -rf .git \
+    && patchlist=$(ls -1 /patches/${zt_version}-*.patch 2> /dev/null || true) \
+    && if [ -n "${patchlist}" ]; then for patch in "${patchlist}"; do echo "Applying patch ${patch}" ; patch -p1 <${patch} ; done ; fi \
+    && make LDFLAGS="-lssl -lcrypto" -j $(nproc --ignore=1) one \
+    && DESTDIR=/zt-root make install \
+    && rm -rfv /zt-root/var/lib/zerotier-one \
+    && strip /zt-root/usr/sbin/zerotier-one \
+    && cd .. \
+    && rm -rf ZeroTierOne
+
+RUN mkdir curl \
+    && cd curl \
+    && curl -sSL https://api.github.com/repos/curl/curl/releases/latest \
+    | grep .\*browser_download_url.\*tar.gz\"\$ \
+    | cut -d \" -f 4 \
+    | xargs curl -sSL \
+    | tar -xvz \
+    && cd curl-* \
+    && ./configure --without-libpsl --disable-dict --disable-gopher -disable-imap --disable-ldap \ 
+       --disable-ldaps --disable-mqtt --disable-ntlm --disable-pop3 --disable-rtsp --disable-smb \
+       --disable-smtp --disable-tftp --disable-tls-srp --disable-websockets --without-brotli --without-libssh \
+       --disable-shared --enable-ipv6 --with-openssl \
+    && make -j$(nproc --ignore=1) V=1 \ 
+    && strip src/curl \
+    && ./src/curl -V \
+    && mv -v ./src/curl /curl \
+    && cd .. \
+    && rm -rf curl
+
+RUN git clone --depth=1 --branch=v0.2.0 https://github.com/openSUSE/catatonit.git 2>&1 > /dev/null \
+    && cd catatonit \
+    && rm -rf /var/cache/yum \
+    && ./autogen.sh \
+    && ./configure \
+    && make -j$(nproc --ignore=1) \
+    && strip catatonit \
+    && cd .. \
+    && mv catatonit/catatonit /catatonit \
+    && rm -rf catatonit
+
+# --- end of build --- #
+
+# Layer 3 - From updated, final
+FROM --platform=$TARGETPLATFORM scratch as final
+COPY --from=debian-updated / /
+
+ARG quay_expiration=never
+
+LABEL io.k8s.description "This container runs Zerotier - a smart programmable Ethernet switch for planet Earth."
+LABEL io.k8s.display-name "zerotier"
+LABEL maintainer "Zenith Tecnologia <dev@zenithtecnologia.com.br>"
+LABEL name "zerotier"
+LABEL summary "ZeroTier - a smart programmable Ethernet switch for planet Earth."
+LABEL url "https://github.com/ZenithTecnologia/zerotier-docker"
+LABEL org.zerotier.version ${zt_version}
+LABEL quay.expires-after ${quay_expiration}
+
+COPY --from=build /zt-root /
+COPY --from=build --chmod=0755 /curl /usr/bin/curl
+COPY --from=build --chmod=0755 /entrypoint.sh /entrypoint.sh
+COPY --from=build --chmod=0755 /catatonit /catatonit
+
+HEALTHCHECK --interval=1s CMD bash /healthcheck.sh
+
+ENTRYPOINT ["/catatonit", "--", "/entrypoint.sh"]

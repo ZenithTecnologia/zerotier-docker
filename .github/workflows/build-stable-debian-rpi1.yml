@@ -1,0 +1,89 @@
+name: Build Zerotier Stable - Debian version for rpi1
+on:
+  push:
+    paths:
+      - .github/workflows/build-stable-debian-armv6-rpi1.yml
+      - Dockerfile.rpi1
+      - /patches/*.patch
+    branches:
+      - main
+  schedule:
+    - cron: '0 0 */7 * *'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build and push to registry
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install qemu dependency
+        uses: docker/setup-qemu-action@v3
+
+      - name: Clone the repository
+        uses: actions/checkout@v4
+
+      - name: Environment Vars setup
+        run: |
+          echo "zt_version=$(git ls-remote --quiet --refs --tags https://github.com/zerotier/ZeroTierOne.git | cut --delimiter='/' --fields=3 | grep -Eo '^[[:digit:]]+.[[:digit:]]+.[[:digit:]]+$' | sort --version-sort | tail -n1)" >> "$GITHUB_ENV"
+
+      - name: Tar as root
+        run: |
+          sudo mv -fv /usr/bin/tar /usr/bin/tar.orig
+          echo -e '#!/bin/sh\n\nsudo /usr/bin/tar.orig "$@"' | sudo tee -a /usr/bin/tar
+          sudo chmod +x /usr/bin/tar
+
+      - name: Enable caching for podman
+        id: cache-podman
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.local/share/containers
+          key: ${{ runner.os }}-${{ runner.arch }}-zerotier-docker-debian-stable
+
+      - name: Podman Socket
+        run: |
+          podman system service  --time=0 unix:///tmp/podman.sock &
+
+      - name: Log in to Quay
+        uses: redhat-actions/podman-login@v1
+        with:
+          registry: "quay.io"
+          username: ${{ secrets.ZENITH_QUAY_USER }}
+          password: ${{ secrets.ZENITH_QUAY_TOKEN }}
+
+      - name: Build container - origin branch latest release
+        id: build-stable-debian-armv6
+        uses: redhat-actions/buildah-build@v2
+        with:
+          image: zerotier-docker
+          tags: latest-armv6 stable-armv6 ${{ env.zt_version }}-armv6
+          layers: true
+          platforms: linux/arm/v6
+          containerfiles: |
+            ./Dockerfile.rpi1
+          build-args: |
+            zt_version=${{ env.zt_version }}
+
+
+      - name: Push to Quay - origin branch latest release
+        uses: redhat-actions/push-to-registry@v2
+        with:
+          image: ${{ steps.build-stable-debian-armv6.outputs.image }}
+          tags: ${{ steps.build-stable-debian-armv6.outputs.tags }}
+          registry: quay.io/zenithtecnologia
+
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@0.27.0
+        with:
+          image-ref: '${{ steps.build-stable-debian-armv6.outputs.image }}'
+          ignore-unfixed: true
+          vuln-type: 'os,library'
+          severity: 'CRITICAL,HIGH'
+          format: 'sarif'
+          output: zerotier-docker-debian-stable-armv6.sarif
+          limit-severities-for-sarif: true
+
+      - name: Upload Trivy scan results to GitHub Security tab
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: 'zerotier-docker-debian-stable-armv6.sarif'
