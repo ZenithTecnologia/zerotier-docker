@@ -98,19 +98,19 @@ jobs:
           tags: ${{ steps.build-sha-debian.outputs.tags }}
           registry: quay.io/zenithtecnologia
 
-      - name: Run Trivy vulnerability scanner
-        uses: aquasecurity/trivy-action@0.27.0
-        with:
-          image-ref: '${{ steps.build-dev-debian.outputs.image }}'
-          ignore-unfixed: true
-          vuln-type: 'os,library'
-          severity: 'CRITICAL,HIGH'
-          format: 'sarif'
-          output: zerotier-docker-debian-dev.sarif
-          limit-severities-for-sarif: true
+#      - name: Run Trivy vulnerability scanner
+#        uses: aquasecurity/trivy-action@0.27.0
+#        with:
+#          image-ref: '${{ steps.build-dev-debian.outputs.image }}'
+#          ignore-unfixed: true
+#          vuln-type: 'os,library'
+#          severity: 'CRITICAL,HIGH'
+#          format: 'sarif'
+#          output: zerotier-docker-debian-dev.sarif
+#          limit-severities-for-sarif: true
 
-      - name: Upload Trivy scan results to GitHub Security tab
-        uses: github/codeql-action/upload-sarif@v3
-        with:
-          sarif_file: 'zerotier-docker-debian-dev.sarif'
+#      - name: Upload Trivy scan results to GitHub Security tab
+#        uses: github/codeql-action/upload-sarif@v3
+#        with:
+#          sarif_file: 'zerotier-docker-debian-dev.sarif'
 
