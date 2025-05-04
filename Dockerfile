@@ -11,7 +11,7 @@ ADD patches /patches
 # Since this image will be discarded in the end, nobody cares about tons of RUN statement except build cache :)
 
 # Patch entrypoint to echo -n
-RUN curl -sSL https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release | sed 's,echo "$content" > "/var/lib/zerotier-one/$file",echo -n "$content" > "/var/lib/zerotier-one/$file",g' > /entrypoint.sh \
+RUN curl -sSL -o /entrypoint.sh https://raw.githubusercontent.com/zerotier/ZeroTierOne/dev/entrypoint.sh.release \
     && chmod 0755 /entrypoint.sh
 
 RUN dnf -y install make gcc gcc-c++ git patch clang openssl openssl-devel libstdc++ libstdc++-devel libstdc++-static glibc-devel \
@@ -24,8 +24,10 @@ RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroT
     && cd ZeroTierOne \
     && git log --pretty=oneline -n1 \
     && rm -rf .git \
-    && patchlist=$(ls -1 /patches/${zt_version}-*.patch 2> /dev/null || true) \
-    && if [ -n "${patchlist}" ]; then for patch in "${patchlist}"; do echo "Applying patch ${patch}" ; patch -p1 <${patch} ; done ; fi \
+    && patchlistall=$(ls -1 /patches/$all-*.patch 2> /dev/null || true) \
+    && if [ -n "${patchlistall}" ]; then for patch in "${patchlistall}"; do echo "Applying all versions patch ${patch}" ; patch -p1 <${patch} ; done ; fi \
+    && patchlistver=$(ls -1 /patches/${zt_version}-*.patch 2> /dev/null || true) \
+    && if [ -n "${patchlistver}" ]; then for patch in "${patchlist}"; do echo "Applying version ${zt_version} patch ${patch}" ; patch -p1 <${patch} ; done ; fi \
     && make LDFLAGS="-static-libstdc++" -j $(nproc --ignore=1) one \
     && mkdir /zt-root \
     && DESTDIR=/zt-root make install \
