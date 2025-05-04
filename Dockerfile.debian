@@ -34,7 +34,7 @@ RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroT
     && cd ZeroTierOne \
     && git log --pretty=oneline -n1 \
     && rm -rf .git \
-    && patchlistall=$(ls -1 /patches/$all-*.patch 2> /dev/null || true) \
+    && patchlistall=$(ls -1 /patches/all-*.patch 2> /dev/null || true) \
     && if [ -n "${patchlistall}" ]; then for patch in "${patchlistall}"; do echo "Applying all versions patch ${patch}" ; patch -p1 <${patch} ; done ; fi \
     && patchlistver=$(ls -1 /patches/${zt_version}-*.patch 2> /dev/null || true) \
     && if [ -n "${patchlistver}" ]; then for patch in "${patchlist}"; do echo "Applying version ${zt_version} patch ${patch}" ; patch -p1 <${patch} ; done ; fi \
