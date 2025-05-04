@@ -1,0 +1,11 @@
+--- /entrypoint.sh.release	2025-05-04 09:09:44.973543303 -0300
++++ /entrypoint.sh	2025-05-04 09:13:00.917141804 -0300
+@@ -124,7 +124,4 @@
+ log_params "zerotier-cli info:" "$(zerotier-cli info)"
+ 
+ log "Sleeping infinitely"
+-while true
+-do
+-  sleep 1
+-done
++sleep infinity
