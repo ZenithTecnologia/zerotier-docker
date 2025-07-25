@@ -1,6 +1,6 @@
 # vim: ft=dockerfile
 
-FROM registry.redhat.io/ubi9:latest as build
+FROM registry.access.redhat.com/ubi10/ubi:latest as build
 
 ARG zt_version
 
@@ -17,7 +17,7 @@ RUN dnf -y install make gcc gcc-c++ git patch clang openssl openssl-devel libstd
     && dnf clean all \
     && rm -rf /var/cache/yum
 
-RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal #rhel
+RUN curl --proto '=https' --tlsv1.2 -sSL https://sh.rustup.rs | sh -s -- -y --quiet --profile minimal #rhel
 
 RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
     && cd ZeroTierOne \
@@ -37,10 +37,10 @@ RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroT
 
 RUN mkdir curl \
     && cd curl \
-    && curl -sSL https://api.github.com/repos/curl/curl/releases/latest \
+    && curl --proto '=https' --tlsv1.2 -sSL https://api.github.com/repos/curl/curl/releases/latest \
     | grep .\*browser_download_url.\*tar.gz\"\$ \
     | cut -d \" -f 4 \
-    | xargs curl -sSL \
+    | xargs curl --proto '=https' --tlsv1.2 -sSL \
     | tar -xvz \
     && cd curl-* \
     && ./configure --without-libpsl --disable-dict --disable-gopher -disable-imap --disable-ldap \
