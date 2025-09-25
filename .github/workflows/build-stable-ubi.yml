@@ -11,85 +11,208 @@ on:
     - cron: '0 0 */7 * *'
   workflow_dispatch:
 
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+  CONTAINERFILE_SUFFIX: ""
+
 jobs:
-  build:
-    name: Build and push to registry
+  get_version:
     runs-on: ubuntu-latest
+    outputs:
+      upstream_branch: ${{ steps.upstream-version.outputs.UPSTREAM_BRANCH }}
     steps:
-      - name: Install qemu dependency
+      - name: set upstream version
+        id: upstream-version
+        run: |
+          echo "UPSTREAM_BRANCH=$(git ls-remote --quiet --refs --tags https://github.com/zerotier/ZeroTierOne.git | cut --delimiter='/' --fields=3 | grep -Eo '^[[:digit:]]+.[[:digit:]]+.[[:digit:]]+$' | sort --version-sort | tail -n1)" >> ${GITHUB_OUTPUT}
+
+  build:
+    runs-on: ubuntu-latest
+    needs: 
+      - get_version
+    env:
+      UPSTREAM_BRANCH: ${{ needs.get_version.outputs.upstream_branch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/amd64
+    steps:
+      - name: set lower case image_name
+        run: |
+          echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >>${GITHUB_ENV}
+        env:
+          OWNER: '${{ env.IMAGE_NAME }}'
+
+      - name: Prepare
+        shell: bash
+        run: |
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      - name: Clone the repository
-        uses: actions/checkout@v4
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
-      - name: Environment Vars setup
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
+        with:
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:cache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:cache,mode=max
+          build-args: zt_version=${{env.UPSTREAM_BRANCH}}
+          file: Dockerfile${{ env.CONTAINERFILE_SUFFIX }}
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
+
+      - name: Export digest
         run: |
-          echo "zt_version=$(git ls-remote --quiet --refs --tags https://github.com/zerotier/ZeroTierOne.git | cut --delimiter='/' --fields=3 | grep -Eo '^[[:digit:]]+.[[:digit:]]+.[[:digit:]]+$' | sort --version-sort | tail -n1)" >> "$GITHUB_ENV"
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
 
-      - name: Tar as root
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
+        with:
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
+
+  build-arm64:
+    runs-on: ubuntu-24.04-arm
+    needs: 
+      - get_version
+    env:
+      UPSTREAM_BRANCH: ${{ needs.get_version.outputs.upstream_branch }}
+    strategy:
+      fail-fast: false
+      matrix:
+        platform:
+          - linux/arm64
+    steps:
+      - name: set lower case image_name
         run: |
-          sudo mv -fv /usr/bin/tar /usr/bin/tar.orig
-          echo -e '#!/bin/sh\n\nsudo /usr/bin/tar.orig "$@"' | sudo tee -a /usr/bin/tar
-          sudo chmod +x /usr/bin/tar
+          echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >>${GITHUB_ENV}
+        env:
+          OWNER: '${{ env.IMAGE_NAME }}'
 
-      - name: Enable caching for podman
-        id: cache-podman
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.local/share/containers
-          key: ${{ runner.os }}-${{ runner.arch }}-zerotier-docker-ubi-stable
-
-      - name: Podman Socket
+      - name: Prepare
+        shell: bash
         run: |
-          podman system service  --time=0 unix:///tmp/podman.sock &
+          platform=${{ matrix.platform }}
+          echo "PLATFORM_PAIR=${platform//\//-}" >> $GITHUB_ENV
 
-      - name: Log in to Quay
-        uses: redhat-actions/podman-login@v1
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
         with:
-          registry: "quay.io"
-          username: ${{ secrets.ZENITH_QUAY_USER }}
-          password: ${{ secrets.ZENITH_QUAY_TOKEN }}
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}
 
-      - name: Log in to registry.redhat.io
-        uses: redhat-actions/podman-login@v1
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
         with:
-          registry: "registry.redhat.io"
-          username: ${{ secrets.ZENITH_REDHAT_USER }}
-          password: ${{ secrets.ZENITH_REDHAT_TOKEN }}
-      
-      - name: Build container for UBI - origin branch latest release
-        id: build-stable-ubi
-        uses: redhat-actions/buildah-build@v2
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push by digest
+        id: build
+        uses: docker/build-push-action@v6
         with:
-          image: zerotier-docker
-          tags: latest stable ${{ env.zt_version }}
-          layers: true
-          platforms: linux/amd64, linux/arm64, linux/ppc64le
-          containerfiles: |
-            ./Dockerfile
-          build-args: |
-            zt_version=${{ env.zt_version }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:cache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:cache,mode=max
+          build-args: zt_version=${{env.UPSTREAM_BRANCH}}
+          file: Dockerfile${{ env.CONTAINERFILE_SUFFIX }}
+          platforms: ${{ matrix.platform }}
+          labels: ${{ steps.meta.outputs.labels }}
+          tags: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}
+          outputs: type=image,push-by-digest=true,name-canonical=true,push=true
 
-      - name: Push to Quay - origin branch latest release 
-        uses: redhat-actions/push-to-registry@v2
+      - name: Export digest
+        run: |
+          mkdir -p ${{ runner.temp }}/digests
+          digest="${{ steps.build.outputs.digest }}"
+          touch "${{ runner.temp }}/digests/${digest#sha256:}"
+
+      - name: Upload digest
+        uses: actions/upload-artifact@v4
         with:
-          image: ${{ steps.build-stable-ubi.outputs.image }}
-          tags: ${{ steps.build-stable-ubi.outputs.tags }}
-          registry: quay.io/zenithtecnologia
+          name: digests-${{ env.PLATFORM_PAIR }}
+          path: ${{ runner.temp }}/digests/*
+          if-no-files-found: error
+          retention-days: 1
 
-#      - name: Run Trivy vulnerability scanner
-#        uses: aquasecurity/trivy-action@0.27.0
-#        with:
-#          image-ref: '${{ steps.build-stable-ubi.outputs.image }}'
-#          ignore-unfixed: true
-#          vuln-type: 'os,library'
-#          severity: 'CRITICAL,HIGH'
-#          format: 'sarif'
-#          output: zerotier-docker-ubi-stable.sarif
-#          limit-severities-for-sarif: true
+  merge:
+    runs-on: ubuntu-latest
+    needs:
+      - get_version
+      - build
+      - build-arm64
+    env:
+      UPSTREAM_BRANCH: ${{ needs.get_version.outputs.upstream_branch }}
+    steps:
+      - name: set lower case image_name
+        run: |
+          echo "IMAGE_NAME_LC=${IMAGE_NAME,,}" >>${GITHUB_ENV}
+        env:
+          OWNER: '${{ env.IMAGE_NAME }}'
 
-#      - name: Upload Trivy scan results to GitHub Security tab
-#        uses: github/codeql-action/upload-sarif@v3
-#        with:
-#          sarif_file: 'zerotier-docker-ubi-stable.sarif'
+      - name: Download digests
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ runner.temp }}/digests
+          pattern: digests-*
+          merge-multiple: true
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}
+          tags: |
+            type=raw,value=latest
+            type=raw,value=${{ env.UPSTREAM_BRANCH }}
+      - name: Create manifest list and push
+        working-directory: ${{ runner.temp }}/digests
+        run: |
+          docker buildx imagetools create $(jq -cr '.tags | map("-t " + .) | join(" ")' <<< "$DOCKER_METADATA_OUTPUT_JSON") \
+            $(printf '${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}@sha256:%s ' *)
+
+      - name: Inspect image
+        run: |
+          docker buildx imagetools inspect ${{ env.REGISTRY }}/${{ env.IMAGE_NAME_LC }}:${{ steps.meta.outputs.version }}
