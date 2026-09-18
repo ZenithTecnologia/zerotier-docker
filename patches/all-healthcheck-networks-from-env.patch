@@ -1,0 +1,11 @@
+--- /entrypoint.sh.release	2026-09-18 18:01:59.425976369 -0300
++++ /entrypoint.sh	2026-09-18 18:06:02.953804959 -0300
+@@ -109,7 +109,7 @@
+   sleep 1
+ done
+ 
+-log_params "Writing healthcheck for networks:" $@
++log_params "Writing healthcheck for networks:" $@ $ZEROTIER_JOIN_NETWORKS
+ 
+ cat >/healthcheck.sh <<EOF
+ #!/bin/bash
