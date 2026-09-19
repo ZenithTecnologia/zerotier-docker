@@ -19,14 +19,13 @@ RUN dnf -y install make gcc gcc-c++ git patch clang openssl openssl-devel libstd
 
 RUN curl --proto '=https' --tlsv1.2 -sSL https://sh.rustup.rs | sh -s -- -y --quiet --profile minimal #rhel
 
-RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
-    && cd ZeroTierOne \
+RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null
+
+RUN cd ZeroTierOne \
     && git log --pretty=oneline -n1 \
+    && find /patches/all-*.patch /patches/${zt_version}-*.patch -print0 2>/dev/null | xargs -0 --verbose git apply -p0 --verbose --recount --directory=/ --allow-empty --unsafe-paths \
     && rm -rf .git \
-    && patchlistall=$(ls -1 /patches/all-*.patch 2> /dev/null || true) \
-    && if [ -n "${patchlistall}" ]; then for patch in "${patchlistall}"; do echo "Applying all versions patch ${patch}" ; patch -d/ -p0 -i ${patch} ; done ; fi \
-    && patchlistver=$(ls -1 /patches/${zt_version}-*.patch 2> /dev/null || true) \
-    && if [ -n "${patchlistver}" ]; then for patch in "${patchlist}"; do echo "Applying version ${zt_version} patch ${patch}" ; patch -d/ -p0 -i ${patch} ; done ; fi \
+    && . "$HOME/.cargo/env" \
     && make LDFLAGS="-static-libstdc++" -j $(nproc --ignore=1) one \
     && mkdir /zt-root \
     && DESTDIR=/zt-root make install \

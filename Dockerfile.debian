@@ -33,11 +33,10 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal #debi
 RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
     && cd ZeroTierOne \
     && git log --pretty=oneline -n1 \
+    && find /patches/all-*.patch /patches/${zt_version}-*.patch -print0 2>/dev/null | xargs -0 --verbose git apply -p0 --verbose --recoun
+t --directory=/ --allow-empty --unsafe-paths \
     && rm -rf .git \
-    && patchlistall=$(ls -1 /patches/all-*.patch 2> /dev/null || true) \
-    && if [ -n "${patchlistall}" ]; then for patch in "${patchlistall}"; do echo "Applying all versions patch ${patch}" ; patch -d/ -p0 -i ${patch} ; done ; fi \
-    && patchlistver=$(ls -1 /patches/${zt_version}-*.patch 2> /dev/null || true) \
-    && if [ -n "${patchlistver}" ]; then for patch in "${patchlist}"; do echo "Applying version ${zt_version} patch ${patch}" ; patch -d/ -p0 -i ${patch} ; done ; fi \
+    && . "$HOME/.cargo/env" \
     && make LDFLAGS="-lssl -lcrypto" -j $(nproc --ignore=1) one \
     && DESTDIR=/zt-root make install \
     && rm -rfv /zt-root/var/lib/zerotier-one \
