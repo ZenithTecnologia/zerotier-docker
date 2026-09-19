@@ -33,8 +33,7 @@ RUN curl https://sh.rustup.rs -sSf | sh -s -- -y --quiet --profile minimal --def
 RUN git clone --depth=1 --branch ${zt_version} https://github.com/zerotier/ZeroTierOne.git 2>&1 > /dev/null \
     && cd ZeroTierOne \
     && git log --pretty=oneline -n1 \
-    && find /patches/all-*.patch /patches/${zt_version}-*.patch -print0 2>/dev/null | xargs -0 --verbose git apply -p0 --verbose --recoun
-t --directory=/ --allow-empty --unsafe-paths \
+    && find /patches/all-*.patch /patches/${zt_version}-*.patch -print0 2>/dev/null | xargs -0 --verbose git apply -p0 --verbose --recount --directory=/ --allow-empty --unsafe-paths \
     && rm -rf .git \
     && . "$HOME/.cargo/env" \
     && make LDFLAGS="-lssl -lcrypto" -j $(nproc --ignore=1) one \
